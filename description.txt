@@ -1,0 +1,13 @@
+This mod currently just allows you to spawn items with a simple command, view what mod adds a tooltip, and see an item's class name.
+Changelog:
+0.1.3:
+Added changelog for 0.1.2.
+
+0.1.2:
+Dye items now show their shader ID in their tooltip.
+
+0.1.1:
+Changed description.
+
+0.1:
+Initial release.

@@ -1,0 +1,12 @@
+author = Tyfyter (Tyfyter2002 on steam)
+
+version = 0.1.2
+
+displayName = Dev Helper
+
+side = NoSync
+
+homepage = https://tyfyter.github.io/
+includeSource = true
+hideCode = false
+hideResources = false
