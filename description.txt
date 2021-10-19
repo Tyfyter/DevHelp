@@ -1,6 +1,8 @@
-This mod currently just allows you to spawn items with a simple command, view what mod adds a tooltip, and see an item's class name.
+This mod adds a few useful features for mod development
+
 Changelog:
 0.1.3:
+Added GUI recipe code generator
 Added changelog for 0.1.2.
 
 0.1.2:
