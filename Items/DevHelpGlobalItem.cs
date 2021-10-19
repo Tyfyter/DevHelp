@@ -19,19 +19,17 @@ namespace DevHelp.Items
 	{
 		public override void ModifyTooltips(Item item, List<TooltipLine> tooltips)
         {
-            Player player = Main.player[item.owner];
-            DevPlayer modPlayer = player.GetModPlayer<DevPlayer>();
             for (int i = 0; i < tooltips.Count; i++)
             {
                 TooltipLine tip;
                 tip = tooltips[i];
-                if(modPlayer.readtooltips){
+                if(DevHelp.readtooltips){
                    tip.text = tip.Name + ": " + tip.text + "; " + tip.mod;
                 }
                 tooltips.RemoveAt(i);
                 tooltips.Insert(i, tip);
             }
-            if(modPlayer.readtooltips){
+            if(DevHelp.readtooltips){
                 if(item.modItem == null){
                     tooltips.Add(new TooltipLine(mod, "Advanced Tooltip", ItemID.Search.GetName(item.type)+":"+item.type));
                     if(item.dye!=0)tooltips.Add(new TooltipLine(mod, "Shader ID", "Shader ID: "+GameShaders.Armor.GetShaderIdFromItemId(item.type)));

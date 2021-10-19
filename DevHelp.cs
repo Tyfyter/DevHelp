@@ -11,55 +11,77 @@ using Terraria.GameInput;
 using Terraria.UI;
 using Terraria.DataStructures;
 using Terraria.GameContent.UI;
+using DevHelp.UI;
 
-namespace DevHelp
-{
-	class DevHelp : Mod
-	{
-        internal static Mod mod;
-        private HotKey ReadTooltipsVar = new HotKey("Toggle Advanced Tooltips", Keys.L);
-		public DevHelp()
-		{
-			Properties = new ModProperties()
-			{
-				Autoload = true,
-				AutoloadGores = true,
-				AutoloadSounds = true
-			};
+namespace DevHelp {
+	public class DevHelp : Mod {
+        internal static DevHelp instance;
+        ModHotKey advancedTooltipsHotkey;
+        ModHotKey recipeMakerTooltipsHotkey;
+		public static bool readtooltips = false;
+
+        public Texture2D[] buttonTextures;
+
+		internal UserInterface UI;
+        internal RecipeMakerUI recipeMakerUI;
+        public override void Load() {
+            instance = this;
+			if (Main.netMode!=NetmodeID.Server){
+				UI = new UserInterface();
+
+                buttonTextures = new Texture2D[] {
+                    GetTexture("Checkbox"),
+                    GetTexture("Checkbox_Hovered"),
+                    GetTexture("Checkbox_Selected"),
+                    GetTexture("Checkbox_Selected_Hovered"),
+                    GetTexture("Button_Copy"),
+                    GetTexture("Button_Copy_Hovered")
+                };
+			}
+
+            advancedTooltipsHotkey = RegisterHotKey("Toggle Advanced Tooltips", Keys.L.ToString());
+            recipeMakerTooltipsHotkey = RegisterHotKey("Toggle Recipe Maker GUI", Keys.PageDown.ToString());
+        }
+        public override void Unload() {
+            instance = null;
+            buttonTextures = null;
+        }
+        public override void UpdateUI(GameTime gameTime) {
+			UI?.Update(gameTime);
 		}
-        
-        public override void Load()
-        {
-            mod = this;
-            Properties = new ModProperties()
-            {
-                Autoload = true,
-                AutoloadGores = true,
-                AutoloadSounds = true
-            };
-
-            RegisterHotKey(ReadTooltipsVar.Name, ReadTooltipsVar.DefaultKey.ToString());
-        }
-
+		public override void ModifyInterfaceLayers(List<GameInterfaceLayer> layers) {
+			int inventoryIndex = layers.FindIndex(layer => layer.Name.Equals("Vanilla: Inventory"));
+			if (inventoryIndex != -1) {
+                layers.Insert(inventoryIndex + 1, new LegacyGameInterfaceLayer(
+					"DevHelp: RecipeMakerUI",
+					delegate {
+						// If the current UIState of the UserInterface is null, nothing will draw. We don't need to track a separate .visible value.
+						UI.Draw(Main.spriteBatch, Main._drawInterfaceGameTime);
+						return true;
+					},
+					InterfaceScaleType.UI)
+				);
+			}
+		}
         public override void HotKeyPressed(string name) {
-            if(PlayerInput.Triggers.JustPressed.KeyStatus[GetTriggerName(name)]) {
-                if(name.Equals(ReadTooltipsVar.Name)) {
-                    ReadTooltips();
-                }
+            bool tick = false;
+            if (advancedTooltipsHotkey?.JustPressed??false) {
+                readtooltips = !readtooltips;
+                tick = true;
             }
-        }
-
-        public void ReadTooltips()
-        {
-            Player player = Main.player[Main.myPlayer];
-            DevPlayer modPlayer = player.GetModPlayer<DevPlayer>();
-            modPlayer.readtooltips = !modPlayer.readtooltips;
-            Main.PlaySound(12, player.Center);
-        }
-
-        public string GetTriggerName(string name)
-        {
-            return Name + ": " + name;
+            if (recipeMakerTooltipsHotkey?.JustPressed??false) {
+                if(recipeMakerUI is null){
+                    recipeMakerUI = new RecipeMakerUI();
+                    recipeMakerUI.Activate();
+                    UI.SetState(recipeMakerUI);
+                } else {
+                    UI.SetState(recipeMakerUI = null);
+                }
+                tick = true;
+            }
+            if (tick) {
+                Main.PlaySound(SoundID.MenuTick);
+            }
         }
 	}
 }
