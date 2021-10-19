@@ -43,35 +43,30 @@ namespace DevHelp.UI
 		}
 	}
 	public class UILabeledCheckbox : UIElement {
-		public Texture2D texture;
-		public Texture2D hoverTexture;
-		public Texture2D selectedTexture;
-		public Texture2D selectedHoverTexture;
+		public string label;
 		private readonly float _scale = 1f;
 		public bool Checked { get; set; }
-		public UILabeledCheckbox(Texture2D texture, Texture2D hoverTexture,Texture2D selectedTexture, Texture2D selectedHoverTexture, float scale = 1f) {
-			this.texture = texture;
-			this.hoverTexture = hoverTexture ?? texture;
-			this.texture = selectedTexture;
-			this.hoverTexture = selectedHoverTexture ?? selectedTexture;
+		public UILabeledCheckbox(string text, float scale = 1f) {
+			label = text;
 			//_scale = scale;
-			Width.Set(texture.Width * scale, 0f);
-			Height.Set(texture.Height * scale, 0f);
+			Width.Set(DevHelp.instance.buttonTextures[0].Width * scale, 0f);
+			Height.Set(DevHelp.instance.buttonTextures[0].Height * scale, 0f);
 		}
         protected override void DrawSelf(SpriteBatch spriteBatch) {
 			float oldScale = Main.inventoryScale;
 			Main.inventoryScale = _scale;
 			Rectangle bounds = GetDimensions().ToRectangle();
-			bool hovered = false;
+			int texture = Checked ? 2 : 0;
 			if (ContainsPoint(Main.MouseScreen) && !PlayerInput.IgnoreMouseInterface) {
 				Main.LocalPlayer.mouseInterface = true;
-				hovered = true;
+				texture |= 1;
 				if (Main.mouseLeft && Main.mouseLeftRelease) {
 					Checked = !Checked;
 				}
 			}
-			spriteBatch.Draw(Checked ? (hovered ? selectedHoverTexture : selectedTexture) : (hovered ? hoverTexture : texture), bounds, Color.White);
-			//Utils.DrawBorderStringFourWay();
+			spriteBatch.Draw(DevHelp.instance.buttonTextures[texture], bounds, Color.White);
+			Vector2 size = Main.fontItemStack.MeasureString(label);
+			Utils.DrawBorderStringFourWay(spriteBatch, Main.fontItemStack, label, bounds.X + bounds.Width + 5, bounds.Y + bounds.Height * 0.6f, Color.White, Color.Black, new Vector2(0, size.Y/2));
 			Main.inventoryScale = oldScale;
 		}
 	}

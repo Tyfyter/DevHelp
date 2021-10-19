@@ -19,33 +19,39 @@ namespace DevHelp.UI {
         public List<RefItemSlot> tiles = new List<RefItemSlot>(){};
         public RefItemSlot outputItem;
         public UIButton copyButton;
+        public UILabeledCheckbox alchemy;
+        public UILabeledCheckbox snowBiome;
+        public UILabeledCheckbox water;
+        public UILabeledCheckbox lava;
+        public UILabeledCheckbox honey;
         public override void OnInitialize(){
             Main.UIScaleMatrix.Decompose(out Vector3 scale, out Quaternion _, out Vector3 _);
             materials.Add(new RefItemSlot(scale: 0.75f, context: ItemSlot.Context.ChestItem,
                     colorContext: ItemSlot.Context.CraftingMaterial) {
-                    Left = { Pixels = (float)(Main.screenWidth * 0.05) },
-                    Top = { Pixels = (float)(Main.screenHeight * 0.4) },
-                    ValidItemFunc = item => true,
-                    index = materials.Count
-				});
+                Left = { Pixels = (float)(Main.screenWidth * 0.05) },
+                Top = { Pixels = (float)(Main.screenHeight * 0.4) },
+                ValidItemFunc = item => true,
+                index = materials.Count,
+                allowsRecipeGroups = true
+            }); ;
             Append(materials[0]);
 
             tiles.Add(new RefItemSlot(scale: 0.75f, context: ItemSlot.Context.ChestItem,
-                    colorContext: ItemSlot.Context.CraftingMaterial) {
-                    Left = { Pixels = (float)(Main.screenWidth * 0.05) },
-                    Top = { Pixels = (float)(Main.screenHeight * 0.4 + 45 * scale.Y) },
-                    ValidItemFunc = item => true,
-                    index = tiles.Count
-				});
+                colorContext: ItemSlot.Context.CraftingMaterial) {
+                Left = { Pixels = (float)(Main.screenWidth * 0.05) },
+                Top = { Pixels = (float)(Main.screenHeight * 0.4 + 45 * scale.Y) },
+                ValidItemFunc = item => item.IsAir || item.createTile >= TileID.Dirt,
+                index = tiles.Count
+			});
             Append(tiles[0]);
 
             outputItem = new RefItemSlot(scale: 0.75f, context: ItemSlot.Context.ChestItem,
-                    colorContext: ItemSlot.Context.CraftingMaterial) {
-                    Left = { Pixels = (float)(Main.screenWidth * 0.05) },
-                    Top = { Pixels = (float)(Main.screenHeight * 0.4 - 45 * scale.Y) },
-                    ValidItemFunc = item => true,
-                    index = materials.Count
-				};
+                colorContext: ItemSlot.Context.CraftingMaterial) {
+                Left = { Pixels = (float)(Main.screenWidth * 0.05) },
+                Top = { Pixels = (float)(Main.screenHeight * 0.4 - 45 * scale.Y) },
+                ValidItemFunc = item => true,
+                index = materials.Count
+			};
             Append(outputItem);
 
             copyButton = new UIButton(DevHelp.instance.buttonTextures[4], DevHelp.instance.buttonTextures[5], 0.85f) {
@@ -58,6 +64,36 @@ namespace DevHelp.UI {
                 }
             };
             Append(copyButton);
+
+            alchemy = new UILabeledCheckbox("alchemy", 0.8f) {
+                Left = { Pixels = (float)(Main.screenWidth * 0.05 + 45 * scale.X) },
+                Top = { Pixels = (float)(Main.screenHeight * 0.4 - 46 * scale.Y) }
+            };
+            Append(alchemy);
+
+            snowBiome = new UILabeledCheckbox("needs snow biome", 0.8f) {
+                Left = { Pixels = (float)(Main.screenWidth * 0.05 + 45 * scale.X) },
+                Top = { Pixels = (float)(Main.screenHeight * 0.4 - 26 * scale.Y) }
+            };
+            Append(snowBiome);
+            
+            water = new UILabeledCheckbox("needs water", 0.8f) {
+                Left = { Pixels = (float)(Main.screenWidth * 0.05) },
+                Top = { Pixels = (float)(Main.screenHeight * 0.4 + 90 * scale.Y) }
+            };
+            Append(water);
+
+            lava = new UILabeledCheckbox("needs lava", 0.8f) {
+                Left = { Pixels = (float)(Main.screenWidth * 0.05 + 30 * scale.X + Main.fontItemStack.MeasureString(water.label).X) },
+                Top = { Pixels = (float)(Main.screenHeight * 0.4 + 90 * scale.Y) }
+            };
+            Append(lava);
+
+            honey = new UILabeledCheckbox("needs honey", 0.8f) {
+                Left = { Pixels = (float)(lava.Left.Pixels + 30 * scale.X + Main.fontItemStack.MeasureString(lava.label).X) },
+                Top = { Pixels = (float)(Main.screenHeight * 0.4 + 90 * scale.Y) }
+            };
+            Append(honey);
         }
         public override void Update(GameTime gameTime) {
             base.Update(gameTime);
@@ -79,7 +115,8 @@ namespace DevHelp.UI {
                     Left = { Pixels = (loop ? materials[0].Left.Pixels : materials[mCount-1].Left.Pixels + 40 * scale.X) },
                     Top = { Pixels = (loop ? materials[mCount-1].Top.Pixels + 40 * scale.Y : materials[mCount-1].Top.Pixels) },
                     ValidItemFunc = item => true,
-                    index = materials.Count
+                    index = materials.Count,
+                    allowsRecipeGroups = true
 				});
                 Append(materials[mCount]);
                 if (loop) {
@@ -119,12 +156,25 @@ namespace DevHelp.UI {
             StringBuilder output = new StringBuilder();
             output.Append("ModRecipe recipe = new ModRecipe(mod);\n");
             Dictionary<int, int> materialItems = new Dictionary<int, int>();
+            Dictionary<RecipeGroup, int> materialGroups = new Dictionary<RecipeGroup, int>();
             Item item;
+            RecipeGroup recipeGroup;
             for (int i = 0; i < materials.Count; i++) {
                 item = materials[i]?.item?.Value;
                 if (item?.IsAir??true) {
                     continue;
                 }
+
+                if (materials[i].proxy) {
+                    recipeGroup = materials[i].recipeGroup;
+                    if (materialGroups.ContainsKey(recipeGroup)) {
+                        materialGroups[recipeGroup] += item.stack;
+                    } else {
+                        materialGroups.Add(recipeGroup, item.stack);
+                    }
+                    continue;
+                }
+
                 if (materialItems.ContainsKey(item.type)) {
                     materialItems[item.type] += item.stack;
                 } else {
@@ -137,6 +187,17 @@ namespace DevHelp.UI {
                     continue;
                 }
                 int count;
+                if (materials[i].proxy) {
+                    recipeGroup = materials[i].recipeGroup;
+                    if (materialGroups[recipeGroup] > 0) {
+                        count = materialGroups[recipeGroup];
+                        materialGroups[recipeGroup] = 0;
+                    } else {
+                        continue;
+                    }
+                    output.Append($"recipe.AddIngredient({GetRecipeGroupCodeName(recipeGroup)}, {count});\n");
+                    continue;
+                }
                 if (materialItems[item.type] > 0) {
                     count = materialItems[item.type];
                     materialItems[item.type] = 0;
@@ -154,6 +215,21 @@ namespace DevHelp.UI {
                 output.Append($"recipe.AddTile({GetTileCodeName(item.createTile)});\n");
             }
             output.Append($"recipe.SetResult({GetItemCodeName(outputItem?.item?.Value)}, {outputItem?.item?.Value?.stack});\n");
+            if (alchemy.Checked) {
+                output.Append($"recipe.alchemy = true;\n");
+            }
+            if (water.Checked) {
+                output.Append($"recipe.needWater = true;\n");
+            }
+            if (lava.Checked) {
+                output.Append($"recipe.needLava = true;\n");
+            }
+            if (honey.Checked) {
+                output.Append($"recipe.needHoney = true;\n");
+            }
+            if (snowBiome.Checked) {
+                output.Append($"recipe.needSnowBiome = true;\n");
+            }
             output.Append("recipe.AddRecipe();");
             return output.ToString();
         }
@@ -165,6 +241,41 @@ namespace DevHelp.UI {
         }
         public static string GetTileCodeName(int tileID) {
             return tileID >= TileID.Count ? $"ModContent.ItemType<{ModContent.GetModTile(tileID).GetType().Name}>()" : $"TileID.{TileID.Search.GetName(tileID)}";
+        }
+        public static string GetRecipeGroupCodeName(RecipeGroup recipeGroup) {
+            int index = -1;
+            foreach (KeyValuePair<int, RecipeGroup> entry in RecipeGroup.recipeGroups) {
+                if (recipeGroup == entry.Value) {
+                    index = entry.Key;
+                    break;
+                }
+            }
+            if(index > 12){
+                foreach (KeyValuePair<string, int> entry in RecipeGroup.recipeGroupIDs) {
+                    if (index == entry.Value) {
+                        return entry.Key;
+                    }
+                }
+                return "";
+            } else {
+                
+                switch (index) {
+                    case 0: return "RecipeGroupID.Birds";
+                    case 1: return "RecipeGroupID.Scorpions";
+                    case 2: return "RecipeGroupID.Bugs";
+                    case 3: return "RecipeGroupID.Ducks";
+                    case 4: return "RecipeGroupID.Squirrels";
+                    case 5: return "RecipeGroupID.Butterflies";
+                    case 6: return "RecipeGroupID.Fireflies";
+                    case 7: return "RecipeGroupID.Snails";
+                    case 8: return "RecipeGroupID.Wood";
+                    case 9: return "RecipeGroupID.IronBar";
+                    case 10: return "RecipeGroupID.PressurePlate";
+                    case 11: return "RecipeGroupID.Sand";
+                    case 12: return "RecipeGroupID.Fragment";
+                    default: return "RecipeGroupID.";
+                }
+            }
         }
     }
 }

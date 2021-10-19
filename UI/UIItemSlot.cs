@@ -1,6 +1,8 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Terraria;
 using Terraria.GameInput;
 using Terraria.UI;
@@ -19,6 +21,9 @@ namespace DevHelp.UI
 		private readonly float _scale;
 		internal Func<Item, bool> ValidItemFunc;
         protected internal int index = -1;
+		public bool allowsRecipeGroups = false;
+		public bool proxy = false;
+		public RecipeGroup recipeGroup;
 		public RefItemSlot(int colorContext = ItemSlot.Context.CraftingMaterial, int context = ItemSlot.Context.InventoryItem, float scale = 1f, Ref<Item> _item = null) {
 			color = colorContext;
             _context = context;
@@ -38,10 +43,45 @@ namespace DevHelp.UI
             }
 			if (ContainsPoint(Main.MouseScreen) && !PlayerInput.IgnoreMouseInterface) {
 				Main.LocalPlayer.mouseInterface = true;
-				if (ValidItemFunc == null || ValidItemFunc(Main.mouseItem)) {
-                    ItemSlot.Handle(ref item.Value, _context);
+				if (proxy) {
+					Main.hoverItemName = recipeGroup.GetText();
+                    if(Main.mouseRight && Main.mouseRightRelease) {
+                        foreach (KeyValuePair<int, RecipeGroup> entry in RecipeGroup.recipeGroups) {
+                            if(recipeGroup is RecipeGroup){
+                                if (recipeGroup == entry.Value) {
+									recipeGroup = null;
+									proxy = false;
+                                }
+								continue;
+                            }
+                            if (entry.Value.ContainsItem(item.Value.type)) {
+								recipeGroup = entry.Value;
+								proxy = true;
+								goto skiphandle;
+                            }
+                        }
+                    } else if (Main.mouseLeft && Main.mouseLeftRelease && Main.keyState.IsKeyDown(Main.FavoriteKey)) {
+						recipeGroup = null;
+						proxy = false;
+                    }
+				} else {
+					if (allowsRecipeGroups && Main.mouseItem.IsAir) {
+                        if (Main.mouseLeft && Main.mouseLeftRelease && Main.keyState.IsKeyDown(Main.FavoriteKey)) {
+                            foreach (KeyValuePair<int, RecipeGroup> entry in RecipeGroup.recipeGroups) {
+                                if (entry.Value.ContainsItem(item.Value.type)) {
+									recipeGroup = entry.Value;
+									proxy = true;
+									goto skiphandle;
+                                }
+                            }
+                        }
+					}
+					if (ValidItemFunc == null || ValidItemFunc(Main.mouseItem)) {
+						ItemSlot.Handle(ref item.Value, _context);
+					}
 				}
 			}
+			skiphandle:
 			// Draw draws the slot itself and Item. Depending on context, the color will change, as will drawing other things like stack counts.
 			ItemSlot.Draw(spriteBatch, ref item.Value, color, rectangle.TopLeft());
 			Main.inventoryScale = oldScale;
