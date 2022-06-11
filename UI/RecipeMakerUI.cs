@@ -12,6 +12,7 @@ using System;
 using System.Linq;
 using System.Text;
 using ReLogic.OS;
+using Terraria.GameContent;
 
 namespace DevHelp.UI {
 	public class RecipeMakerUI : UIState {
@@ -59,7 +60,7 @@ namespace DevHelp.UI {
                 Top = { Pixels = (float)(Main.screenHeight * 0.4 - 43 * scale.Y) },
                 hover = () => Main.hoverItemName = "Copy to clipboard",
                 function = () => {
-                    Platform.Current.Clipboard = GenerateRecipe();
+                    Platform.Get<IClipboard>().Value = GenerateRecipe();
                     Main.NewText("Copied recipe to clipboard");
                 }
             };
@@ -84,13 +85,13 @@ namespace DevHelp.UI {
             Append(water);
 
             lava = new UILabeledCheckbox("needs lava", 0.8f) {
-                Left = { Pixels = (float)(Main.screenWidth * 0.05 + 30 * scale.X + Main.fontItemStack.MeasureString(water.label).X) },
+                Left = { Pixels = (float)(Main.screenWidth * 0.05 + 30 * scale.X + FontAssets.ItemStack.Value.MeasureString(water.label).X) },
                 Top = { Pixels = (float)(Main.screenHeight * 0.4 + 90 * scale.Y) }
             };
             Append(lava);
 
             honey = new UILabeledCheckbox("needs honey", 0.8f) {
-                Left = { Pixels = (float)(lava.Left.Pixels + 30 * scale.X + Main.fontItemStack.MeasureString(lava.label).X) },
+                Left = { Pixels = (float)(lava.Left.Pixels + 30 * scale.X + FontAssets.ItemStack.Value.MeasureString(lava.label).X) },
                 Top = { Pixels = (float)(Main.screenHeight * 0.4 + 90 * scale.Y) }
             };
             Append(honey);
@@ -144,12 +145,12 @@ namespace DevHelp.UI {
         }
         public override void OnDeactivate() {
             base.OnDeactivate();
-            Main.LocalPlayer.QuickSpawnClonedItem(outputItem.item.Value, outputItem.item.Value.stack);
+            Main.LocalPlayer.QuickSpawnClonedItem(Main.LocalPlayer.GetSource_DropAsItem(), outputItem.item.Value, outputItem.item.Value.stack);
             foreach(RefItemSlot materialSlot in materials) {
-                Main.LocalPlayer.QuickSpawnClonedItem(materialSlot.item.Value, materialSlot.item.Value.stack);
+                Main.LocalPlayer.QuickSpawnClonedItem(Main.LocalPlayer.GetSource_DropAsItem(), materialSlot.item.Value, materialSlot.item.Value.stack);
             }
             foreach(RefItemSlot tileSlot in tiles) {
-                Main.LocalPlayer.QuickSpawnClonedItem(tileSlot.item.Value, tileSlot.item.Value.stack);
+                Main.LocalPlayer.QuickSpawnClonedItem(Main.LocalPlayer.GetSource_DropAsItem(), tileSlot.item.Value, tileSlot.item.Value.stack);
             }
         }
         public string GenerateRecipe() {
@@ -215,7 +216,7 @@ namespace DevHelp.UI {
                 output.Append($"recipe.AddTile({GetTileCodeName(item.createTile)});\n");
             }
             output.Append($"recipe.SetResult({GetItemCodeName(outputItem?.item?.Value)}, {outputItem?.item?.Value?.stack});\n");
-            if (alchemy.Checked) {
+            /*if (alchemy.Checked) {
                 output.Append($"recipe.alchemy = true;\n");
             }
             if (water.Checked) {
@@ -229,7 +230,7 @@ namespace DevHelp.UI {
             }
             if (snowBiome.Checked) {
                 output.Append($"recipe.needSnowBiome = true;\n");
-            }
+            }*/
             output.Append("recipe.AddRecipe();");
             return output.ToString();
         }
@@ -237,7 +238,7 @@ namespace DevHelp.UI {
             if (item?.IsAir??true) {
                 return "";
             }
-            return item.type >= ItemID.Count ? $"ModContent.ItemType<{item.modItem.GetType().Name}>()" : $"ItemID.{ItemID.Search.GetName(item.type)}";
+            return item.type >= ItemID.Count ? $"ModContent.ItemType<{item.ModItem.GetType().Name}>()" : $"ItemID.{ItemID.Search.GetName(item.type)}";
         }
         public static string GetTileCodeName(int tileID) {
             return tileID >= TileID.Count ? $"ModContent.ItemType<{ModContent.GetModTile(tileID).GetType().Name}>()" : $"TileID.{TileID.Search.GetName(tileID)}";

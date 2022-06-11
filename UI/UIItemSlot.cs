@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Terraria;
+using Terraria.GameContent;
 using Terraria.GameInput;
 using Terraria.UI;
 
@@ -29,8 +30,8 @@ namespace DevHelp.UI
             _context = context;
 			_scale = scale;
 			item = _item??new Ref<Item>(new Item());
-			Width.Set(Main.inventoryBack9Texture.Width * scale, 0f);
-			Height.Set(Main.inventoryBack9Texture.Height * scale, 0f);
+			Width.Set(TextureAssets.InventoryBack9.Value.Width * scale, 0f);
+			Height.Set(TextureAssets.InventoryBack9.Value.Height * scale, 0f);
 		}
         protected override void DrawSelf(SpriteBatch spriteBatch) {
 			float oldScale = Main.inventoryScale;

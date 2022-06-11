@@ -12,76 +12,109 @@ using Terraria.UI;
 using Terraria.DataStructures;
 using Terraria.GameContent.UI;
 using DevHelp.UI;
+using ReLogic.Content;
+using Terraria.Audio;
 
 namespace DevHelp {
 	public class DevHelp : Mod {
         internal static DevHelp instance;
-        ModHotKey advancedTooltipsHotkey;
-        ModHotKey recipeMakerTooltipsHotkey;
+        public static ModKeybind AdvancedTooltipsHotkey { get; private set; }
+        public static ModKeybind RecipeMakerHotkey { get; private set; }
+
 		public static bool readtooltips = false;
 
-        public Texture2D[] buttonTextures;
+        public AutoCastingAsset<Texture2D>[] buttonTextures;
 
-		internal UserInterface UI;
-        internal RecipeMakerUI recipeMakerUI;
+		internal static UserInterface UI;
+        internal static RecipeMakerUI recipeMakerUI;
         public override void Load() {
             instance = this;
-			if (Main.netMode!=NetmodeID.Server){
+			if (Main.netMode!=NetmodeID.Server) {
 				UI = new UserInterface();
 
-                buttonTextures = new Texture2D[] {
-                    GetTexture("Checkbox"),
-                    GetTexture("Checkbox_Hovered"),
-                    GetTexture("Checkbox_Selected"),
-                    GetTexture("Checkbox_Selected_Hovered"),
-                    GetTexture("Button_Copy"),
-                    GetTexture("Button_Copy_Hovered")
+                buttonTextures = new AutoCastingAsset<Texture2D>[] {
+                    Assets.Request<Texture2D>("Checkbox"),
+                    Assets.Request<Texture2D>("Checkbox_Hovered"),
+                    Assets.Request<Texture2D>("Checkbox_Selected"),
+                    Assets.Request<Texture2D>("Checkbox_Selected_Hovered"),
+                    Assets.Request<Texture2D>("Button_Copy"),
+                    Assets.Request<Texture2D>("Button_Copy_Hovered")
                 };
 			}
 
-            advancedTooltipsHotkey = RegisterHotKey("Toggle Advanced Tooltips", Keys.L.ToString());
-            recipeMakerTooltipsHotkey = RegisterHotKey("Toggle Recipe Maker GUI", Keys.PageDown.ToString());
+            AdvancedTooltipsHotkey = KeybindLoader.RegisterKeybind(this, "Toggle Advanced Tooltips", Keys.L.ToString());
+            RecipeMakerHotkey = KeybindLoader.RegisterKeybind(this, "Toggle Recipe Maker GUI", Keys.PageDown.ToString());
         }
         public override void Unload() {
             instance = null;
             buttonTextures = null;
+            AdvancedTooltipsHotkey = null;
+            RecipeMakerHotkey = null;
+            UI = null;
+            recipeMakerUI = null;
         }
+    }
+    public class DevSystem : ModSystem {
         public override void UpdateUI(GameTime gameTime) {
-			UI?.Update(gameTime);
-		}
-		public override void ModifyInterfaceLayers(List<GameInterfaceLayer> layers) {
-			int inventoryIndex = layers.FindIndex(layer => layer.Name.Equals("Vanilla: Inventory"));
-			if (inventoryIndex != -1) {
+            DevHelp.UI?.Update(gameTime);
+        }
+        public override void ModifyInterfaceLayers(List<GameInterfaceLayer> layers) {
+            int inventoryIndex = layers.FindIndex(layer => layer.Name.Equals("Vanilla: Inventory"));
+            if (inventoryIndex != -1) {
                 layers.Insert(inventoryIndex + 1, new LegacyGameInterfaceLayer(
-					"DevHelp: RecipeMakerUI",
-					delegate {
-						// If the current UIState of the UserInterface is null, nothing will draw. We don't need to track a separate .visible value.
-						UI.Draw(Main.spriteBatch, Main._drawInterfaceGameTime);
-						return true;
-					},
-					InterfaceScaleType.UI)
-				);
-			}
-		}
-        public override void HotKeyPressed(string name) {
+                    "DevHelp: RecipeMakerUI",
+                    delegate {
+                        // If the current UIState of the UserInterface is null, nothing will draw. We don't need to track a separate .visible value.
+                        DevHelp.UI.Draw(Main.spriteBatch, Main._drawInterfaceGameTime);
+                        return true;
+                    },
+                    InterfaceScaleType.UI)
+                );
+            }
+        }
+    }
+    public class DevPlayer : ModPlayer {
+        public static bool controlAdvancedTooltips;
+        public static bool releaseAdvancedTooltips;
+        public static bool controlRecipeMaker;
+        public static bool releaseRecipeMaker;
+        public override void ProcessTriggers(TriggersSet triggersSet) {
             bool tick = false;
-            if (advancedTooltipsHotkey?.JustPressed??false) {
-                readtooltips = !readtooltips;
+
+            releaseAdvancedTooltips = !controlAdvancedTooltips;
+            controlAdvancedTooltips = triggersSet.KeyStatus["DevHelp: Toggle Advanced Tooltips"];
+            if (controlAdvancedTooltips && releaseAdvancedTooltips) {
+                DevHelp.readtooltips = !DevHelp.readtooltips;
                 tick = true;
             }
-            if (recipeMakerTooltipsHotkey?.JustPressed??false) {
-                if(recipeMakerUI is null){
-                    recipeMakerUI = new RecipeMakerUI();
-                    recipeMakerUI.Activate();
-                    UI.SetState(recipeMakerUI);
+
+            releaseRecipeMaker = !controlRecipeMaker;
+            controlRecipeMaker = triggersSet.KeyStatus["DevHelp: Toggle Recipe Maker GUI"];
+            if (controlRecipeMaker && releaseRecipeMaker) {
+                if (DevHelp.recipeMakerUI is null) {
+                    DevHelp.recipeMakerUI = new RecipeMakerUI();
+                    DevHelp.recipeMakerUI.Activate();
+                    DevHelp.UI.SetState(DevHelp.recipeMakerUI);
                 } else {
-                    UI.SetState(recipeMakerUI = null);
+                    DevHelp.UI.SetState(DevHelp.recipeMakerUI = null);
                 }
                 tick = true;
             }
             if (tick) {
-                Main.PlaySound(SoundID.MenuTick);
+                SoundEngine.PlaySound(SoundID.MenuTick);
             }
         }
-	}
+    }
+    public struct AutoCastingAsset<T> where T : class {
+        public bool HasValue => asset is not null;
+        public bool IsLoaded => asset?.IsLoaded ?? false;
+        public T Value => asset.Value;
+
+        readonly Asset<T> asset;
+        AutoCastingAsset(Asset<T> asset) {
+            this.asset = asset;
+        }
+        public static implicit operator AutoCastingAsset<T>(Asset<T> asset) => new(asset);
+        public static implicit operator T(AutoCastingAsset<T> asset) => asset.Value;
+    }
 }

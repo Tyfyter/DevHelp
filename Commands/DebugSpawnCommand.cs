@@ -32,8 +32,7 @@ namespace DevHelp.Commands
 		public override void Action(CommandCaller player, string input, string[] args)
 		{
 			int item;
-			int pointless;
-			int givenitem;
+			int givenitem = 0;
 			int count = 1;
 			if(args[0].ToLower()=="help"){
 				string o = "";
@@ -49,11 +48,11 @@ namespace DevHelp.Commands
 				if(o.Length>0)Main.NewText(o);
 				Main.NewText("Count:"+NPCID.Count);
 				return;
-			}else if(int.TryParse(args[0], out pointless)){
+			}else if(int.TryParse(args[0], out _)){
 				if(!int.TryParse(args[0], out item))return;
 				if(args.Length == 2)int.TryParse(args[1], out count);
-				givenitem = NPC.NewNPC((int)Main.MouseWorld.X, (int)Main.MouseWorld.Y, int.Parse(args[0]));
-				if(count>1)for(int i = 1; i<count; i++)NPC.NewNPC((int)Main.MouseWorld.X, (int)Main.MouseWorld.Y, item);
+				givenitem = NPC.NewNPC(player.Player.GetSource_Misc("debug_spawn_command"), (int)Main.MouseWorld.X, (int)Main.MouseWorld.Y, int.Parse(args[0]));
+				if(count>1)for(int i = 1; i<count; i++)NPC.NewNPC(player.Player.GetSource_Misc("debug_spawn_command"), (int)Main.MouseWorld.X, (int)Main.MouseWorld.Y, item);
 			}else if(args.Length==1){
 				Type type = typeof(NPCID);
 				item = 0;
@@ -68,18 +67,18 @@ namespace DevHelp.Commands
 					return;
 				}
 				if(args.Length == 2)int.TryParse(args[1], out count);
-				givenitem = NPC.NewNPC((int)Main.MouseWorld.X, (int)Main.MouseWorld.Y, item);
-				if(count>1)for(int i = 1; i<count; i++)NPC.NewNPC((int)Main.MouseWorld.X, (int)Main.MouseWorld.Y, item);
-			}else{
+				givenitem = NPC.NewNPC(player.Player.GetSource_Misc("debug_spawn_command"), (int)Main.MouseWorld.X, (int)Main.MouseWorld.Y, item);
+				if(count>1)for(int i = 1; i<count; i++)NPC.NewNPC(player.Player.GetSource_Misc("debug_spawn_command"), (int)Main.MouseWorld.X, (int)Main.MouseWorld.Y, item);
+			}/* else {
 				Mod itemmod = ModLoader.GetMod(args[0]);
 				if(itemmod==null)return;
 				if(itemmod.GetNPC(args[1])==null)return;
 				item = itemmod.NPCType(args[1]);
 				if(args.Length == 3)int.TryParse(args[2], out count);
-				givenitem = NPC.NewNPC((int)Main.MouseWorld.X, (int)Main.MouseWorld.Y, item);
-				if(count>1)for(int i = 1; i<count; i++)NPC.NewNPC((int)Main.MouseWorld.X, (int)Main.MouseWorld.Y, item);
+				givenitem = NPC.NewNPC(player.Player.GetSource_Misc("debug_spawn_command"), (int)Main.MouseWorld.X, (int)Main.MouseWorld.Y, item);
+				if(count>1)for(int i = 1; i<count; i++)NPC.NewNPC(player.Player.GetSource_Misc("debug_spawn_command"), (int)Main.MouseWorld.X, (int)Main.MouseWorld.Y, item);
 				//givenitem = Item.NewItem(player.Player.Center, new Vector2(), item, count, false, 0, true);
-			}
+			}*/
 			Main.NewText("Player "+player.Player.name+" has successfully spawned "+Main.npc[givenitem].GivenOrTypeName+(count==1?"":"x"+count));
 			//Main.NewText("Player "+player.Player.name+" was successfully given "+Main.item[givenitem].HoverName+" x"+count+"  [i/s"+count+":"+item+"]");
 		}
@@ -110,9 +109,8 @@ namespace DevHelp.Commands
 
 		public override void Action(CommandCaller player, string input, string[] args)
 		{
-			int item;
-			int pointless;
-			int givenitem;
+			int item = 0;
+			int givenitem = 0;
 			int count = 1;
 			if(args[0].ToLower()=="help"){
 				string o = "";
@@ -134,19 +132,19 @@ namespace DevHelp.Commands
 				item = 0;
 				if(!int.TryParse(type.GetField(args[1]).GetRawConstantValue().ToString(),out item))ErrorMessage();//Main.NewText("Failed to give"+player.Player.name+" item. reason: invalid ID.", Color.OrangeRed);
 				if(args.Length == 3)int.TryParse(args[2], out count);
-				givenitem = Item.NewItem(player.Player.Center, new Vector2(), item, count, false, 0, true);
-			}else if(int.TryParse(args[0], out pointless)){
+				givenitem = Item.NewItem(player.Player.GetSource_Misc("debug_spawn_command"), player.Player.Center, new Vector2(), item, count, false, 0, true);
+			}else if(int.TryParse(args[0], out _)){
 				if(!int.TryParse(args[0], out item))return;
 				if(args.Length == 2)int.TryParse(args[1], out count);
-            	givenitem = Item.NewItem(player.Player.Center, new Vector2(), int.Parse(args[0]), count, false, 0, true);
-			}else{
+            	givenitem = Item.NewItem(player.Player.GetSource_Misc("debug_spawn_command"), player.Player.Center, new Vector2(), int.Parse(args[0]), count, false, 0, true);
+			}/*else{
 				Mod itemmod = ModLoader.GetMod(args[0]);
 				if(itemmod==null)return;
 				if(itemmod.GetItem(args[1])==null)return;
 				item = itemmod.ItemType(args[1]);
 				if(args.Length == 3)int.TryParse(args[2], out count);
 				givenitem = Item.NewItem(player.Player.Center, new Vector2(), item, count, false, 0, true);
-			}
+			}*/
 			Main.NewText("Player "+player.Player.name+" was successfully given "+Main.item[givenitem].HoverName+" x"+count+"  [i/s"+count+":"+item+"]");
 		}
 		void ErrorMessage(){

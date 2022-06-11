@@ -24,18 +24,18 @@ namespace DevHelp.Items
                 TooltipLine tip;
                 tip = tooltips[i];
                 if(DevHelp.readtooltips){
-                   tip.text = tip.Name + ": " + tip.text + "; " + tip.mod;
+                   tip.Text = tip.Name + ": " + tip.Text + "; " + tip.Mod;
                 }
                 tooltips.RemoveAt(i);
                 tooltips.Insert(i, tip);
             }
             if(DevHelp.readtooltips){
-                if(item.modItem == null){
-                    tooltips.Add(new TooltipLine(mod, "Advanced Tooltip", ItemID.Search.GetName(item.type)+":"+item.type));
-                    if(item.dye!=0)tooltips.Add(new TooltipLine(mod, "Shader ID", "Shader ID: "+GameShaders.Armor.GetShaderIdFromItemId(item.type)));
+                if(item.ModItem == null){
+                    tooltips.Add(new TooltipLine(Mod, "Advanced Tooltip", ItemID.Search.GetName(item.type)+":"+item.type));
+                    if(item.dye!=0)tooltips.Add(new TooltipLine(Mod, "Shader ID", "Shader ID: "+GameShaders.Armor.GetShaderIdFromItemId(item.type)));
                     return;
                 }
-                tooltips.Add(new TooltipLine(mod, "Advanced Tooltip", item.modItem.mod.Name+":"+item.modItem.Name+":"+item.type));
+                tooltips.Add(new TooltipLine(Mod, "Advanced Tooltip", item.ModItem.Mod.Name+":"+item.ModItem.Name+":"+item.type));
             }
         }
         /*public override void SetDefaults(Item item){

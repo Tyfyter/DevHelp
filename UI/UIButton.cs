@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using System;
 using Terraria;
+using Terraria.GameContent;
 using Terraria.GameInput;
 using Terraria.UI;
 
@@ -49,8 +50,8 @@ namespace DevHelp.UI
 		public UILabeledCheckbox(string text, float scale = 1f) {
 			label = text;
 			//_scale = scale;
-			Width.Set(DevHelp.instance.buttonTextures[0].Width * scale, 0f);
-			Height.Set(DevHelp.instance.buttonTextures[0].Height * scale, 0f);
+			Width.Set(DevHelp.instance.buttonTextures[0].Value.Width * scale, 0f);
+			Height.Set(DevHelp.instance.buttonTextures[0].Value.Height * scale, 0f);
 		}
         protected override void DrawSelf(SpriteBatch spriteBatch) {
 			float oldScale = Main.inventoryScale;
@@ -65,8 +66,8 @@ namespace DevHelp.UI
 				}
 			}
 			spriteBatch.Draw(DevHelp.instance.buttonTextures[texture], bounds, Color.White);
-			Vector2 size = Main.fontItemStack.MeasureString(label);
-			Utils.DrawBorderStringFourWay(spriteBatch, Main.fontItemStack, label, bounds.X + bounds.Width + 5, bounds.Y + bounds.Height * 0.6f, Color.White, Color.Black, new Vector2(0, size.Y/2));
+			Vector2 size = FontAssets.ItemStack.Value.MeasureString(label);
+			Utils.DrawBorderStringFourWay(spriteBatch, FontAssets.ItemStack.Value, label, bounds.X + bounds.Width + 5, bounds.Y + bounds.Height * 0.6f, Color.White, Color.Black, new Vector2(0, size.Y/2));
 			Main.inventoryScale = oldScale;
 		}
 	}
