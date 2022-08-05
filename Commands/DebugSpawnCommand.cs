@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using System;
 using System.Reflection;
 using Terraria;
+using Terraria.DataStructures;
 using Terraria.ID;
 using Terraria.ModLoader;
 
@@ -61,7 +62,7 @@ namespace DevHelp.Commands
 					return;
 				}
 				try{
-					if(!int.TryParse(type.GetField(args[0]).GetRawConstantValue().ToString(),out item))ErrorMessage();
+					if(!int.TryParse(type.GetField(args[0]).GetRawConstantValue().ToString(),out item)) ErrorMessage();
 				}catch(NullReferenceException){
 					ErrorMessage();
 					return;
@@ -82,7 +83,8 @@ namespace DevHelp.Commands
 			Main.NewText("Player "+player.Player.name+" has successfully spawned "+Main.npc[givenitem].GivenOrTypeName+(count==1?"":"x"+count));
 			//Main.NewText("Player "+player.Player.name+" was successfully given "+Main.item[givenitem].HoverName+" x"+count+"  [i/s"+count+":"+item+"]");
 		}
-		void ErrorMessage(){
+
+		static void ErrorMessage(){
 			Main.NewText("Failed to spawn NPC. reason: invalid ID.", Color.OrangeRed);
 			Main.NewText("Try \"/spawn help\" for a list of all NPC IDs.", Color.Orange);
 		}
@@ -130,13 +132,13 @@ namespace DevHelp.Commands
 			}else if(args[0]==""){
 				Type type = typeof(ItemID);
 				item = 0;
-				if(!int.TryParse(type.GetField(args[1]).GetRawConstantValue().ToString(),out item))ErrorMessage();//Main.NewText("Failed to give"+player.Player.name+" item. reason: invalid ID.", Color.OrangeRed);
+				if(!int.TryParse(type.GetField(args[1]).GetRawConstantValue().ToString(),out item)) ErrorMessage();//Main.NewText("Failed to give"+player.Player.name+" item. reason: invalid ID.", Color.OrangeRed);
 				if(args.Length == 3)int.TryParse(args[2], out count);
-				givenitem = Item.NewItem(player.Player.GetSource_Misc("debug_spawn_command"), player.Player.Center, new Vector2(), item, count, false, 0, true);
+				givenitem = Item.NewItem(new EntitySource_DebugCommand(input), player.Player.Center, new Vector2(), item, count, false, 0, true);
 			}else if(int.TryParse(args[0], out _)){
 				if(!int.TryParse(args[0], out item))return;
 				if(args.Length == 2)int.TryParse(args[1], out count);
-            	givenitem = Item.NewItem(player.Player.GetSource_Misc("debug_spawn_command"), player.Player.Center, new Vector2(), int.Parse(args[0]), count, false, 0, true);
+            	givenitem = Item.NewItem(new EntitySource_DebugCommand(input), player.Player.Center, new Vector2(), int.Parse(args[0]), count, false, 0, true);
 			}/*else{
 				Mod itemmod = ModLoader.GetMod(args[0]);
 				if(itemmod==null)return;
@@ -147,9 +149,10 @@ namespace DevHelp.Commands
 			}*/
 			Main.NewText("Player "+player.Player.name+" was successfully given "+Main.item[givenitem].HoverName+" x"+count+"  [i/s"+count+":"+item+"]");
 		}
-		void ErrorMessage(){
-			Main.NewText("Failed to spawn Item. reason: invalid ID.", Color.OrangeRed);
-			Main.NewText("Try \"/spawn help\" for a list of all Item IDs.", Color.Orange);
+
+		static void ErrorMessage(){
+			Main.NewText("Failed to give Item. reason: invalid ID.", Color.OrangeRed);
+			Main.NewText("Try \"/give help\" for a list of all Item IDs.", Color.Orange);
 		}
 	}
 }

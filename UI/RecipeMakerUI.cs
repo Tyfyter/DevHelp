@@ -155,7 +155,7 @@ namespace DevHelp.UI {
         }
         public string GenerateRecipe() {
             StringBuilder output = new StringBuilder();
-            output.Append("ModRecipe recipe = new ModRecipe(mod);\n");
+            output.Append($"Recipe recipe = new Recipe.Create({GetItemCodeName(outputItem?.item?.Value)}, {outputItem?.item?.Value?.stack ?? 1});\n");
             Dictionary<int, int> materialItems = new Dictionary<int, int>();
             Dictionary<RecipeGroup, int> materialGroups = new Dictionary<RecipeGroup, int>();
             Item item;
@@ -215,7 +215,6 @@ namespace DevHelp.UI {
                 }
                 output.Append($"recipe.AddTile({GetTileCodeName(item.createTile)});\n");
             }
-            output.Append($"recipe.SetResult({GetItemCodeName(outputItem?.item?.Value)}, {outputItem?.item?.Value?.stack});\n");
             /*if (alchemy.Checked) {
                 output.Append($"recipe.alchemy = true;\n");
             }
