@@ -58,7 +58,7 @@ namespace DevHelp.UI {
             copyButton = new UIButton(DevHelp.instance.buttonTextures[4], DevHelp.instance.buttonTextures[5], 0.85f) {
                 Left = { Pixels = (float)(Main.screenWidth * 0.05 - 26 * scale.X) },
                 Top = { Pixels = (float)(Main.screenHeight * 0.4 - 43 * scale.Y) },
-                hover = () => Main.hoverItemName = "Copy to clipboard",
+                hover = () => Main.hoverItemName = "Generate and copy to clipboard",
                 function = () => {
                     Platform.Get<IClipboard>().Value = GenerateRecipe();
                     Main.NewText("Copied recipe to clipboard");
@@ -155,11 +155,14 @@ namespace DevHelp.UI {
         }
         public string GenerateRecipe() {
             StringBuilder output = new StringBuilder();
-            output.Append($"Recipe recipe = new Recipe.Create({GetItemCodeName(outputItem?.item?.Value)}, {outputItem?.item?.Value?.stack ?? 1});\n");
+            output.Append($"Recipe recipe = new Recipe.Create({GetItemCodeName(outputItem.item.Value)}, {outputItem.item.Value.stack});\n");
             Dictionary<int, int> materialItems = new Dictionary<int, int>();
             Dictionary<RecipeGroup, int> materialGroups = new Dictionary<RecipeGroup, int>();
             Item item;
             RecipeGroup recipeGroup;
+            Recipe recipe = DevHelp.RecipeMakerRecipe;
+            recipe.Clear();
+            recipe.ReplaceResult(outputItem.item.Value.type, outputItem.item.Value.stack);
             for (int i = 0; i < materials.Count; i++) {
                 item = materials[i]?.item?.Value;
                 if (item?.IsAir??true) {
@@ -196,7 +199,8 @@ namespace DevHelp.UI {
                     } else {
                         continue;
                     }
-                    output.Append($"recipe.AddIngredient({GetRecipeGroupCodeName(recipeGroup)}, {count});\n");
+                    output.Append($"recipe.AddRecipeGroup({GetRecipeGroupCodeName(recipeGroup)}, {count});\n");
+                    recipe.AddRecipeGroup(GetRecipeGroupCodeName(recipeGroup), count);
                     continue;
                 }
                 if (materialItems[item.type] > 0) {
@@ -206,6 +210,7 @@ namespace DevHelp.UI {
                     continue;
                 }
                 output.Append($"recipe.AddIngredient({GetItemCodeName(item)}, {count});\n");
+                recipe.AddIngredient(item.type, count);
             }
             HashSet<int> tilesListed = new HashSet<int>();
             for (int i = 0; i < tiles.Count; i++) {
@@ -213,24 +218,31 @@ namespace DevHelp.UI {
                 if (item?.IsAir??true || tilesListed.Contains(item.createTile)) {
                     continue;
                 }
+                tilesListed.Add(item.createTile);
                 output.Append($"recipe.AddTile({GetTileCodeName(item.createTile)});\n");
+                recipe.AddTile(item.createTile);
             }
-            /*if (alchemy.Checked) {
-                output.Append($"recipe.alchemy = true;\n");
+            if (alchemy.Checked) {
+                output.Append($"recipe.AddConsumeItemCallback(Recipe.ConsumptionRules.Alchemy);\n");
+                recipe.AddConsumeItemCallback(Recipe.ConsumptionRules.Alchemy);
             }
             if (water.Checked) {
-                output.Append($"recipe.needWater = true;\n");
+                output.Append($"recipe.AddCondition(Recipe.Condition.NearWater);\n");
+                recipe.AddCondition(Recipe.Condition.NearWater);
             }
             if (lava.Checked) {
-                output.Append($"recipe.needLava = true;\n");
+                output.Append($"recipe.AddCondition(Recipe.Condition.NearLava);\n");
+                recipe.AddCondition(Recipe.Condition.NearLava);
             }
             if (honey.Checked) {
-                output.Append($"recipe.needHoney = true;\n");
+                output.Append($"recipe.AddCondition(Recipe.Condition.NearHoney);\n");
+                recipe.AddCondition(Recipe.Condition.NearHoney);
             }
             if (snowBiome.Checked) {
-                output.Append($"recipe.needSnowBiome = true;\n");
-            }*/
-            output.Append("recipe.AddRecipe();");
+                output.Append($"recipe.AddCondition(Recipe.Condition.InSnow);\n");
+                recipe.AddCondition(Recipe.Condition.InSnow);
+            }
+            output.Append("recipe.Register();");
             return output.ToString();
         }
         public static string GetItemCodeName(Item item) {

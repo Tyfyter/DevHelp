@@ -14,6 +14,7 @@ using Terraria.GameContent.UI;
 using DevHelp.UI;
 using ReLogic.Content;
 using Terraria.Audio;
+using System.Reflection;
 
 namespace DevHelp {
 	public class DevHelp : Mod {
@@ -27,9 +28,11 @@ namespace DevHelp {
 
 		internal static UserInterface UI;
         internal static RecipeMakerUI recipeMakerUI;
+        internal static int customRecipeIndex;
+        public static Recipe RecipeMakerRecipe => Main.recipe[customRecipeIndex];
         public override void Load() {
             instance = this;
-			if (Main.netMode!=NetmodeID.Server) {
+            if (Main.netMode!=NetmodeID.Server) {
 				UI = new UserInterface();
 
                 buttonTextures = new AutoCastingAsset<Texture2D>[] {
@@ -55,7 +58,13 @@ namespace DevHelp {
         }
     }
     public class DevSystem : ModSystem {
-        public override void UpdateUI(GameTime gameTime) {
+		public override void AddRecipes() {
+            Recipe recipe = Recipe.Create(ItemID.HallowedKey);
+            recipe.AddIngredient(ItemID.HallowedKeyMold);
+            recipe.Register();
+            DevHelp.customRecipeIndex = recipe.RecipeIndex;
+        }
+		public override void UpdateUI(GameTime gameTime) {
             DevHelp.UI?.Update(gameTime);
         }
         public override void ModifyInterfaceLayers(List<GameInterfaceLayer> layers) {
@@ -117,4 +126,13 @@ namespace DevHelp {
         public static implicit operator AutoCastingAsset<T>(Asset<T> asset) => new(asset);
         public static implicit operator T(AutoCastingAsset<T> asset) => asset.Value;
     }
+    public static class DevExtensions {
+        public static void Clear(this Recipe recipe) {
+            recipe.requiredItem.Clear();
+            recipe.requiredTile.Clear();
+            recipe.Conditions.Clear();
+            typeof(Recipe).GetProperty("ConsumeItemHooks", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(recipe, null);
+            typeof(Recipe).GetProperty("OnCraftHooks", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(recipe, null);
+        }
+	}
 }
