@@ -33,8 +33,9 @@ namespace DevHelp.UI {
                 Top = { Pixels = (float)(Main.screenHeight * 0.4) },
                 ValidItemFunc = item => true,
                 index = materials.Count,
-                allowsRecipeGroups = true
-            }); ;
+                allowsRecipeGroups = true,
+                extraTooltip = "Ingredient"
+            });
             Append(materials[0]);
 
             tiles.Add(new RefItemSlot(scale: 0.75f, context: ItemSlot.Context.ChestItem,
@@ -42,8 +43,9 @@ namespace DevHelp.UI {
                 Left = { Pixels = (float)(Main.screenWidth * 0.05) },
                 Top = { Pixels = (float)(Main.screenHeight * 0.4 + 45 * scale.Y) },
                 ValidItemFunc = item => item.IsAir || item.createTile >= TileID.Dirt,
-                index = tiles.Count
-			});
+                index = tiles.Count,
+                extraTooltip = "Required Tile"
+            });
             Append(tiles[0]);
 
             outputItem = new RefItemSlot(scale: 0.75f, context: ItemSlot.Context.ChestItem,
@@ -51,8 +53,9 @@ namespace DevHelp.UI {
                 Left = { Pixels = (float)(Main.screenWidth * 0.05) },
                 Top = { Pixels = (float)(Main.screenHeight * 0.4 - 45 * scale.Y) },
                 ValidItemFunc = item => true,
-                index = materials.Count
-			};
+                index = materials.Count,
+                extraTooltip = "Output Item"
+            };
             Append(outputItem);
 
             copyButton = new UIButton(DevHelp.instance.buttonTextures[4], DevHelp.instance.buttonTextures[5], 0.85f) {
@@ -117,8 +120,9 @@ namespace DevHelp.UI {
                     Top = { Pixels = (loop ? materials[mCount-1].Top.Pixels + 40 * scale.Y : materials[mCount-1].Top.Pixels) },
                     ValidItemFunc = item => true,
                     index = materials.Count,
-                    allowsRecipeGroups = true
-				});
+                    allowsRecipeGroups = true,
+                    extraTooltip = "Ingredient"
+                });
                 Append(materials[mCount]);
                 if (loop) {
                     foreach(RefItemSlot slot in tiles) {
@@ -138,8 +142,9 @@ namespace DevHelp.UI {
                     Left = { Pixels = (loop ? tiles[0].Left.Pixels : tiles[tCount-1].Left.Pixels + 40 * scale.X) },
                     Top = { Pixels = (loop ? tiles[tCount-1].Top.Pixels + 40 * scale.Y : tiles[tCount-1].Top.Pixels) },
                     ValidItemFunc = item => item.IsAir || item.createTile >= TileID.Dirt,
-                    index = tiles.Count
-				});
+                    index = tiles.Count,
+                    extraTooltip = "Required Tile"
+                });
                 Append(tiles[tCount]);
             }
         }

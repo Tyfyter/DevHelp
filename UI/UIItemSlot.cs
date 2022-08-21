@@ -1,3 +1,4 @@
+using DevHelp.Items;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using System;
@@ -25,6 +26,7 @@ namespace DevHelp.UI
 		public bool allowsRecipeGroups = false;
 		public bool proxy = false;
 		public RecipeGroup recipeGroup;
+		public string extraTooltip = null;
 		public RefItemSlot(int colorContext = ItemSlot.Context.CraftingMaterial, int context = ItemSlot.Context.InventoryItem, float scale = 1f, Ref<Item> _item = null) {
 			color = colorContext;
             _context = context;
@@ -44,6 +46,7 @@ namespace DevHelp.UI
             }
 			if (ContainsPoint(Main.MouseScreen) && !PlayerInput.IgnoreMouseInterface) {
 				Main.LocalPlayer.mouseInterface = true;
+				DevHelpGlobalItem.recipeMakerTooltip = extraTooltip;
 				if (proxy) {
 					Main.hoverItemName = recipeGroup.GetText();
                     if(Main.mouseRight && Main.mouseRightRelease) {
@@ -81,6 +84,7 @@ namespace DevHelp.UI
 						ItemSlot.Handle(ref item.Value, _context);
 					}
 				}
+				Main.hoverItemName = extraTooltip + ":\n"+Main.hoverItemName;
 			}
 			skiphandle:
 			// Draw draws the slot itself and Item. Depending on context, the color will change, as will drawing other things like stack counts.
