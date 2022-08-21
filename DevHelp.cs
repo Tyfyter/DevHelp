@@ -15,14 +15,20 @@ using DevHelp.UI;
 using ReLogic.Content;
 using Terraria.Audio;
 using System.Reflection;
+using System.Threading.Tasks;
+using System;
+using Terraria.GameContent;
+using Terraria.UI.Chat;
+using System.IO;
 
 namespace DevHelp {
 	public class DevHelp : Mod {
         internal static DevHelp instance;
         public static ModKeybind AdvancedTooltipsHotkey { get; private set; }
         public static ModKeybind RecipeMakerHotkey { get; private set; }
+        public static ModKeybind RarityImageHotkey { get; private set; }
 
-		public static bool readtooltips = false;
+        public static bool readtooltips = false;
 
         public AutoCastingAsset<Texture2D>[] buttonTextures;
 
@@ -47,12 +53,14 @@ namespace DevHelp {
 
             AdvancedTooltipsHotkey = KeybindLoader.RegisterKeybind(this, "Toggle Advanced Tooltips", Keys.L.ToString());
             RecipeMakerHotkey = KeybindLoader.RegisterKeybind(this, "Toggle Recipe Maker GUI", Keys.PageDown.ToString());
+            RarityImageHotkey = KeybindLoader.RegisterKeybind(this, "Save Rarity Name Image", Keys.PrintScreen.ToString());
         }
         public override void Unload() {
             instance = null;
             buttonTextures = null;
             AdvancedTooltipsHotkey = null;
             RecipeMakerHotkey = null;
+            RarityImageHotkey = null;
             UI = null;
             recipeMakerUI = null;
         }
@@ -87,19 +95,23 @@ namespace DevHelp {
         public static bool releaseAdvancedTooltips;
         public static bool controlRecipeMaker;
         public static bool releaseRecipeMaker;
+        Func<int, ModRarity> _getRarity;
+        Func<int, ModRarity> GetRarity => _getRarity ??= typeof(RarityLoader)
+            .GetMethod("GetRarity", BindingFlags.NonPublic | BindingFlags.Static)
+            .CreateDelegate<Func<int, ModRarity>>();
         public override void ProcessTriggers(TriggersSet triggersSet) {
             bool tick = false;
 
-            releaseAdvancedTooltips = !controlAdvancedTooltips;
-            controlAdvancedTooltips = triggersSet.KeyStatus["DevHelp: Toggle Advanced Tooltips"];
-            if (controlAdvancedTooltips && releaseAdvancedTooltips) {
+            //releaseAdvancedTooltips = !controlAdvancedTooltips;
+            //controlAdvancedTooltips = triggersSet.KeyStatus["DevHelp: Toggle Advanced Tooltips"];
+            if (DevHelp.AdvancedTooltipsHotkey.JustPressed) {
                 DevHelp.readtooltips = !DevHelp.readtooltips;
                 tick = true;
             }
 
-            releaseRecipeMaker = !controlRecipeMaker;
-            controlRecipeMaker = triggersSet.KeyStatus["DevHelp: Toggle Recipe Maker GUI"];
-            if (controlRecipeMaker && releaseRecipeMaker) {
+            //releaseRecipeMaker = !controlRecipeMaker;
+            //controlRecipeMaker = triggersSet.KeyStatus["DevHelp: Toggle Recipe Maker GUI"];
+            if (DevHelp.RecipeMakerHotkey.JustPressed) {
                 if (DevHelp.recipeMakerUI is null) {
                     DevHelp.recipeMakerUI = new RecipeMakerUI();
                     DevHelp.recipeMakerUI.Activate();
@@ -109,6 +121,80 @@ namespace DevHelp {
                 }
                 tick = true;
             }
+
+            if (DevHelp.RarityImageHotkey.JustPressed) {
+                int rare = Main.HoverItem.rare;
+                //Task.Run(()=> {
+                Vector2 size = default;
+                string text = null;
+                Color color = default;
+				if (GetRarity(rare) is ModRarity rarity) {
+					if (rarity.GetType().GetProperty("RarityName") is PropertyInfo propertyInfo) {
+                        text = (string)propertyInfo.GetValue(null);
+					} else {
+                        text = rarity.Name;
+                    }
+                    size = FontAssets.MouseText.Value.MeasureString(text);
+                    Main.mouseTextColor = 255;
+                    color = rarity.RarityColor;
+                } else if(ItemRarityID.Search.TryGetName(rare, out string name)) {
+                    size = FontAssets.MouseText.Value.MeasureString(name);
+                    text = name;
+                    color = ItemRarity.GetColor(rare);
+                }
+				if (text is not null) {
+                    //GraphicsDevice graphicsDevice = new(Main.graphics.GraphicsDevice.Adapter, Main.graphics.GraphicsProfile, new PresentationParameters() {
+                    //});
+                    RenderTarget2D renderTarget = new(Main.graphics.GraphicsDevice, (int)size.X + 8, (int)size.Y + 8);
+                    SpriteBatch spriteBatch = new(Main.graphics.GraphicsDevice);
+                    renderTarget.GraphicsDevice.SetRenderTarget(renderTarget);
+                    renderTarget.GraphicsDevice.Clear(Color.Transparent);
+                    spriteBatch.Begin();
+                    SpriteBatch realMainSB = Main.spriteBatch;
+					try {
+                        Main.spriteBatch = spriteBatch;
+                        int yoff = 0;
+                        DrawableTooltipLine tooltipLine = new DrawableTooltipLine(
+                            new TooltipLine(Mod, "ItemName", text),
+                            0,
+                            4,
+                            4,
+                            color
+                        );
+						if (ItemLoader.PreDrawTooltipLine(Main.HoverItem, tooltipLine, ref yoff)) {
+                            ChatManager.DrawColorCodedStringWithShadow(
+                                spriteBatch,
+                                tooltipLine.Font,
+                                tooltipLine.Text,
+                                new Vector2(tooltipLine.X, tooltipLine.Y),
+                                tooltipLine.Color,
+                                tooltipLine.Rotation,
+                                tooltipLine.Origin,
+                                tooltipLine.BaseScale,
+                                tooltipLine.MaxWidth,
+                                tooltipLine.Spread
+                            );
+                        }
+                    } finally {
+                        Main.spriteBatch = realMainSB;
+					}
+                    spriteBatch.End();
+                    string folderPath = Path.Combine(Main.SavePath, "DevHelp");
+                    if (!Directory.Exists(folderPath)) Directory.CreateDirectory(folderPath);
+                    string filePath = Path.Combine(folderPath, "Rare" + text) + ".png";
+                    Stream stream = File.Exists(filePath) ? File.OpenWrite(filePath) : File.Create(filePath);
+                    renderTarget.SaveAsPng(stream, (int)size.X + 8, (int)size.Y + 8);
+                    renderTarget.GraphicsDevice.SetRenderTarget(null);
+                    new System.Diagnostics.Process() {
+                        StartInfo = new System.Diagnostics.ProcessStartInfo("explorer", filePath)
+                    }.Start();
+                    //Filters.Scene.EndCapture(null, Main.screenTarget, Main.screenTargetSwap, Color.Transparent);
+                    //graphicsDevice.SetRenderTarget(null);
+                }
+				//});
+                tick = true;
+            }
+
             if (tick) {
                 SoundEngine.PlaySound(SoundID.MenuTick);
             }
