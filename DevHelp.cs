@@ -20,6 +20,7 @@ using System;
 using Terraria.GameContent;
 using Terraria.UI.Chat;
 using System.IO;
+using System.Diagnostics;
 
 namespace DevHelp {
 	public class DevHelp : Mod {
@@ -185,8 +186,8 @@ namespace DevHelp {
                     Stream stream = File.Exists(filePath) ? File.OpenWrite(filePath) : File.Create(filePath);
                     renderTarget.SaveAsPng(stream, (int)size.X + 8, (int)size.Y + 8);
                     renderTarget.GraphicsDevice.SetRenderTarget(null);
-                    new System.Diagnostics.Process() {
-                        StartInfo = new System.Diagnostics.ProcessStartInfo("explorer", filePath)
+                    new Process() {
+                        StartInfo = new ProcessStartInfo("explorer", filePath)
                     }.Start();
                     //Filters.Scene.EndCapture(null, Main.screenTarget, Main.screenTargetSwap, Color.Transparent);
                     //graphicsDevice.SetRenderTarget(null);
