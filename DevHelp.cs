@@ -138,6 +138,54 @@ namespace DevHelp {
                     size = FontAssets.MouseText.Value.MeasureString(text);
                     Main.mouseTextColor = 255;
                     color = rarity.RarityColor;
+					if (rarity.GetType().GetProperty("RarityAnimationFrames") is PropertyInfo animationInfo) {
+                        int max = (int)(byte)animationInfo.GetValue(null);
+						for (int i = -max; i < max; i++) {
+                            Main.mouseTextColor = (byte)(190 + (65 * Math.Abs(i)) / max);
+                            color = rarity.RarityColor;
+                            RenderTarget2D renderTarget = new(Main.graphics.GraphicsDevice, (int)size.X + 8, (int)size.Y + 8);
+                            SpriteBatch spriteBatch = new(Main.graphics.GraphicsDevice);
+                            renderTarget.GraphicsDevice.SetRenderTarget(renderTarget);
+                            renderTarget.GraphicsDevice.Clear(Color.Transparent);
+                            spriteBatch.Begin();
+                            SpriteBatch realMainSB = Main.spriteBatch;
+                            try {
+                                Main.spriteBatch = spriteBatch;
+                                int yoff = 0;
+                                DrawableTooltipLine tooltipLine = new(
+                                    new TooltipLine(Mod, "ItemName", text),
+                                    0,
+                                    4,
+                                    4,
+                                    color
+                                );
+                                if (ItemLoader.PreDrawTooltipLine(Main.HoverItem, tooltipLine, ref yoff)) {
+                                    ChatManager.DrawColorCodedStringWithShadow(
+                                        spriteBatch,
+                                        tooltipLine.Font,
+                                        tooltipLine.Text,
+                                        new Vector2(tooltipLine.X, tooltipLine.Y),
+                                        tooltipLine.Color,
+                                        tooltipLine.Rotation,
+                                        tooltipLine.Origin,
+                                        tooltipLine.BaseScale,
+                                        tooltipLine.MaxWidth,
+                                        tooltipLine.Spread
+                                    );
+                                }
+                            } finally {
+                                Main.spriteBatch = realMainSB;
+                            }
+                            spriteBatch.End();
+                            string folderPath = Path.Combine(Main.SavePath, "DevHelp", "Animated");
+                            if (!Directory.Exists(folderPath)) Directory.CreateDirectory(folderPath);
+                            string filePath = Path.Combine(folderPath, "Rare" + text + (i + max)) + ".png";
+                            Stream stream = File.Exists(filePath) ? File.OpenWrite(filePath) : File.Create(filePath);
+                            renderTarget.SaveAsPng(stream, (int)size.X + 8, (int)size.Y + 8);
+                            renderTarget.GraphicsDevice.SetRenderTarget(null);
+                        }
+                        text = null;
+                    }
                 } else if(ItemRarityID.Search.TryGetName(rare, out string name)) {
                     size = FontAssets.MouseText.Value.MeasureString(name);
                     text = name;
