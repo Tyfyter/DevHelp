@@ -13,6 +13,7 @@ using System.Linq;
 using System.Text;
 using ReLogic.OS;
 using Terraria.GameContent;
+using System.Reflection;
 
 namespace DevHelp.UI {
 	public class RecipeMakerUI : UIState {
@@ -25,7 +26,9 @@ namespace DevHelp.UI {
         public UILabeledCheckbox water;
         public UILabeledCheckbox lava;
         public UILabeledCheckbox honey;
-        public override void OnInitialize(){
+		public UILabeledCheckbox[] otherConditions;
+		public static FastStaticFieldInfo<Recipe.Condition>[] conditionFields;
+		public override void OnInitialize(){
             Main.UIScaleMatrix.Decompose(out Vector3 scale, out Quaternion _, out Vector3 _);
             materials.Add(new RefItemSlot(scale: 0.75f, context: ItemSlot.Context.ChestItem,
                     colorContext: ItemSlot.Context.CraftingMaterial) {
@@ -98,7 +101,68 @@ namespace DevHelp.UI {
                 Top = { Pixels = (float)(Main.screenHeight * 0.4 + 90 * scale.Y) }
             };
             Append(honey);
-        }
+
+			otherConditions = new UILabeledCheckbox[32];
+			float maxX = 0;
+			for (int i = 0; i < otherConditions.Length; i++) {
+				otherConditions[i] = new UILabeledCheckbox(GetConditionName(i, false), 0.8f) {
+					Left = { Pixels = Main.screenWidth * 0.05f },
+					Top = { Pixels = (float)(Main.screenHeight * 0.4 + (110 + (i / 2) * 20) * scale.Y) }
+				};
+				Append(otherConditions[i]);
+				float currentX = 30 * scale.X + FontAssets.ItemStack.Value.MeasureString(otherConditions[i].label).X;
+				if (maxX < currentX) maxX = currentX;
+			}
+			for (int i = 1; i < otherConditions.Length; i += 2) {
+				otherConditions[i].Left.Pixels += maxX;
+			}
+		}
+		static string GetConditionName(int index, bool forCode) {
+			if (conditionFields is null) {
+				conditionFields = new FastStaticFieldInfo<Recipe.Condition>[32];
+			}
+			string name = index switch {
+				0  => "InBeach",
+				1  => "InGranite",
+				2  => "InMarble",
+				3  => "InHive",
+				4  => "InGemCave",
+				5  => "InLihzhardTemple",
+				6  => "InGraveyardBiome",
+				7  => "InUndergroundDesert",
+				8  => "InDesert",
+				9  => "InGlowshroom",
+				10 => "InMeteor",
+				11 => "InDungeon",
+				12 => "InCorrupt",
+				13 => "InHallow",
+				14 => "InJungle",
+				15 => "InCrimson",
+
+				16 => "InSkyHeight",
+				17 => "InOverworldHeight",
+				18 => "InDirtLayerHeight",
+				19 => "InRockLayerHeight",
+				20 => "InUnderworldHeight",
+
+				21 => "InRain",
+				22 => "InSandstorm",
+				23 => "InOldOneArmy",
+
+				24 => "InWaterCandle",
+				25 => "InPeaceCandle",
+
+				26 => "InTowerSolar",
+				27 => "InTowerVortex",
+				28 => "InTowerNebula",
+				29 => "InTowerStardust",
+
+				30 => "TimeDay",
+				31 => "TimeNight",
+				_ => throw new ArgumentOutOfRangeException(nameof(index))
+			};
+			return forCode ? name : (conditionFields[index] ??= new(typeof(Recipe.Condition), name, BindingFlags.Public)).GetValue().Description; 
+		}
         public override void Update(GameTime gameTime) {
             base.Update(gameTime);
             Main.UIScaleMatrix.Decompose(out Vector3 scale, out Quaternion _, out Vector3 _);
@@ -160,7 +224,7 @@ namespace DevHelp.UI {
         }
         public string GenerateRecipe() {
             StringBuilder output = new StringBuilder();
-            output.Append($"Recipe recipe = new Recipe.Create({GetItemCodeName(outputItem.item.Value)}, {outputItem.item.Value.stack});\n");
+            output.Append($"Recipe.Create({GetItemCodeName(outputItem.item.Value)}, {outputItem.item.Value.stack})\n");
             Dictionary<int, int> materialItems = new Dictionary<int, int>();
             Dictionary<RecipeGroup, int> materialGroups = new Dictionary<RecipeGroup, int>();
             Item item;
@@ -204,7 +268,7 @@ namespace DevHelp.UI {
                     } else {
                         continue;
                     }
-                    output.Append($"recipe.AddRecipeGroup({GetRecipeGroupCodeName(recipeGroup)}, {count});\n");
+                    output.Append($".AddRecipeGroup({GetRecipeGroupCodeName(recipeGroup)}, {count})\n");
                     recipe.AddRecipeGroup(GetRecipeGroupCodeName(recipeGroup), count);
                     continue;
                 }
@@ -214,7 +278,7 @@ namespace DevHelp.UI {
                 } else {
                     continue;
                 }
-                output.Append($"recipe.AddIngredient({GetItemCodeName(item)}, {count});\n");
+                output.Append($".AddIngredient({GetItemCodeName(item)}, {count})\n");
                 recipe.AddIngredient(item.type, count);
             }
             HashSet<int> tilesListed = new HashSet<int>();
@@ -224,32 +288,38 @@ namespace DevHelp.UI {
                     continue;
                 }
                 tilesListed.Add(item.createTile);
-                output.Append($"recipe.AddTile({GetTileCodeName(item.createTile)});\n");
+                output.Append($".AddTile({GetTileCodeName(item.createTile)})\n");
                 recipe.AddTile(item.createTile);
             }
             if (alchemy.Checked) {
-                output.Append($"recipe.AddConsumeItemCallback(Recipe.ConsumptionRules.Alchemy);\n");
+                output.Append($".AddConsumeItemCallback(Recipe.ConsumptionRules.Alchemy)\n");
                 recipe.AddConsumeItemCallback(Recipe.ConsumptionRules.Alchemy);
             }
             if (water.Checked) {
-                output.Append($"recipe.AddCondition(Recipe.Condition.NearWater);\n");
+                output.Append($".AddCondition(Recipe.Condition.NearWater)\n");
                 recipe.AddCondition(Recipe.Condition.NearWater);
             }
             if (lava.Checked) {
-                output.Append($"recipe.AddCondition(Recipe.Condition.NearLava);\n");
+                output.Append($".AddCondition(Recipe.Condition.NearLava)\n");
                 recipe.AddCondition(Recipe.Condition.NearLava);
             }
             if (honey.Checked) {
-                output.Append($"recipe.AddCondition(Recipe.Condition.NearHoney);\n");
+                output.Append($".AddCondition(Recipe.Condition.NearHoney)\n");
                 recipe.AddCondition(Recipe.Condition.NearHoney);
             }
             if (snowBiome.Checked) {
-                output.Append($"recipe.AddCondition(Recipe.Condition.InSnow);\n");
+                output.Append($".AddCondition(Recipe.Condition.InSnow)\n");
                 recipe.AddCondition(Recipe.Condition.InSnow);
             }
-            output.Append("recipe.Register();");
-            return output.ToString();
-        }
+			for (int i = 0; i < otherConditions.Length; i++) {
+				if (otherConditions[i].Checked) {
+					output.Append($".AddCondition(Recipe.Condition.{GetConditionName(i, true)})\n");
+					recipe.AddCondition(conditionFields[i].GetValue());
+				}
+			}
+            output.Append(".Register();");
+			return output.ToString();
+		}
         public static string GetItemCodeName(Item item) {
             if (item?.IsAir??true) {
                 return "";

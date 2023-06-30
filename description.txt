@@ -2,6 +2,11 @@ This mod adds a few useful features for mod development
 
 Changelog:
 
+0.1.4:
+Updated to 1.4
+Added new toggles to recipe generator
+Added hastily made icon
+
 0.1.3.1:
 Added toggles to GUI recipe code generator.
 
