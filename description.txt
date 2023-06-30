@@ -4,6 +4,7 @@ Changelog:
 
 0.1.4:
 Updated to 1.4
+Added rarity name renderer
 Added new toggles to recipe generator
 Added hastily made icon
 
