@@ -27,7 +27,7 @@ namespace DevHelp.UI {
         public UILabeledCheckbox lava;
         public UILabeledCheckbox honey;
 		public UILabeledCheckbox[] otherConditions;
-		public static FastStaticFieldInfo<Recipe.Condition>[] conditionFields;
+		public static FastStaticFieldInfo<Condition>[] conditionFields;
 		public override void OnInitialize(){
             Main.UIScaleMatrix.Decompose(out Vector3 scale, out Quaternion _, out Vector3 _);
             materials.Add(new RefItemSlot(scale: 0.75f, context: ItemSlot.Context.ChestItem,
@@ -119,7 +119,7 @@ namespace DevHelp.UI {
 		}
 		static string GetConditionName(int index, bool forCode) {
 			if (conditionFields is null) {
-				conditionFields = new FastStaticFieldInfo<Recipe.Condition>[32];
+				conditionFields = new FastStaticFieldInfo<Condition>[32];
 			}
 			string name = index switch {
 				0  => "InBeach",
@@ -161,7 +161,7 @@ namespace DevHelp.UI {
 				31 => "TimeNight",
 				_ => throw new ArgumentOutOfRangeException(nameof(index))
 			};
-			return forCode ? name : (conditionFields[index] ??= new(typeof(Recipe.Condition), name, BindingFlags.Public)).GetValue().Description; 
+			return forCode ? name : (conditionFields[index] ??= new(typeof(Condition), name, BindingFlags.Public)).GetValue().Description.Value; 
 		}
         public override void Update(GameTime gameTime) {
             base.Update(gameTime);
@@ -214,12 +214,12 @@ namespace DevHelp.UI {
         }
         public override void OnDeactivate() {
             base.OnDeactivate();
-            Main.LocalPlayer.QuickSpawnClonedItem(Main.LocalPlayer.GetSource_DropAsItem(), outputItem.item.Value, outputItem.item.Value.stack);
+            Main.LocalPlayer.QuickSpawnItem(Main.LocalPlayer.GetSource_DropAsItem(), outputItem.item.Value, outputItem.item.Value.stack);
             foreach(RefItemSlot materialSlot in materials) {
-                Main.LocalPlayer.QuickSpawnClonedItem(Main.LocalPlayer.GetSource_DropAsItem(), materialSlot.item.Value, materialSlot.item.Value.stack);
+                Main.LocalPlayer.QuickSpawnItem(Main.LocalPlayer.GetSource_DropAsItem(), materialSlot.item.Value, materialSlot.item.Value.stack);
             }
             foreach(RefItemSlot tileSlot in tiles) {
-                Main.LocalPlayer.QuickSpawnClonedItem(Main.LocalPlayer.GetSource_DropAsItem(), tileSlot.item.Value, tileSlot.item.Value.stack);
+                Main.LocalPlayer.QuickSpawnItem(Main.LocalPlayer.GetSource_DropAsItem(), tileSlot.item.Value, tileSlot.item.Value.stack);
             }
         }
         public string GenerateRecipe() {
@@ -297,19 +297,19 @@ namespace DevHelp.UI {
             }
             if (water.Checked) {
                 output.Append($".AddCondition(Recipe.Condition.NearWater)\n");
-                recipe.AddCondition(Recipe.Condition.NearWater);
+                recipe.AddCondition(Condition.NearWater);
             }
             if (lava.Checked) {
                 output.Append($".AddCondition(Recipe.Condition.NearLava)\n");
-                recipe.AddCondition(Recipe.Condition.NearLava);
+                recipe.AddCondition(Condition.NearLava);
             }
             if (honey.Checked) {
                 output.Append($".AddCondition(Recipe.Condition.NearHoney)\n");
-                recipe.AddCondition(Recipe.Condition.NearHoney);
+                recipe.AddCondition(Condition.NearHoney);
             }
             if (snowBiome.Checked) {
                 output.Append($".AddCondition(Recipe.Condition.InSnow)\n");
-                recipe.AddCondition(Recipe.Condition.InSnow);
+                recipe.AddCondition(Condition.InSnow);
             }
 			for (int i = 0; i < otherConditions.Length; i++) {
 				if (otherConditions[i].Checked) {
