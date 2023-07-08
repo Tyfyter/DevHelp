@@ -127,11 +127,61 @@ namespace DevHelp {
 
             if (DevHelp.RarityImageHotkey.JustPressed) {
                 int rare = Main.HoverItem.rare;
-                //Task.Run(()=> {
-                Vector2 size = default;
+				Type itemModType = Main.HoverItem.ModItem?.GetType();
+				//Task.Run(()=> {
+				Vector2 size = default;
                 string text = null;
                 Color color = default;
-				if (GetRarity(rare) is ModRarity rarity) {
+				if (itemModType?.GetProperty("RarityName") is PropertyInfo uniqueRarityName) {
+					string name = (string)uniqueRarityName.GetValue(null);
+					size = FontAssets.MouseText.Value.MeasureString(name);
+					text = name;
+					color = Color.White;
+					if (itemModType.GetMethod("GetCustomRarityDraw") is MethodInfo customDraw) {
+						int frameNumber = 0;
+						foreach (var item in ((IEnumerable<(TextSnippet[] snippets, Vector2 offset, Color color)>)customDraw.Invoke(null, new object[] { text }))) {
+							RenderTarget2D renderTarget = new(Main.graphics.GraphicsDevice, (int)size.X + 8, (int)size.Y + 8);
+							SpriteBatch spriteBatch = new(Main.graphics.GraphicsDevice);
+							renderTarget.GraphicsDevice.SetRenderTarget(renderTarget);
+							renderTarget.GraphicsDevice.Clear(Color.Transparent);
+							spriteBatch.Begin();
+							SpriteBatch realMainSB = Main.spriteBatch;
+							try {
+								Main.spriteBatch = spriteBatch;
+								DrawableTooltipLine tooltipLine = new(
+									new TooltipLine(Mod, "ItemName", text),
+									0,
+									4,
+									4,
+									color
+								);
+								ChatManager.DrawColorCodedStringWithShadow(
+									Main.spriteBatch,
+									tooltipLine.Font,
+									item.snippets,
+									new Vector2(4, 4) + item.offset,
+									tooltipLine.Rotation,
+									item.color,
+									tooltipLine.Origin,
+									tooltipLine.BaseScale,
+									out _,
+									tooltipLine.MaxWidth,
+									tooltipLine.Spread
+								);
+							} finally {
+								Main.spriteBatch = realMainSB;
+							}
+							spriteBatch.End();
+							string folderPath = Path.Combine(Main.SavePath, "DevHelp", "Animated");
+							if (!Directory.Exists(folderPath)) Directory.CreateDirectory(folderPath);
+							string filePath = Path.Combine(folderPath, "Rare" + text + (frameNumber++)) + ".png";
+							Stream stream = File.Exists(filePath) ? File.OpenWrite(filePath) : File.Create(filePath);
+							renderTarget.SaveAsPng(stream, (int)size.X + 8, (int)size.Y + 8);
+							renderTarget.GraphicsDevice.SetRenderTarget(null);
+						}
+						text = null;
+					}
+				} else if (GetRarity(rare) is ModRarity rarity) {
 					if (rarity.GetType().GetProperty("RarityName") is PropertyInfo propertyInfo) {
                         text = (string)propertyInfo.GetValue(null);
 					} else {
