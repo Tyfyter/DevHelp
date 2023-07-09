@@ -14,6 +14,7 @@ using System.Text;
 using ReLogic.OS;
 using Terraria.GameContent;
 using System.Reflection;
+using Terraria.ModLoader.Core;
 
 namespace DevHelp.UI {
 	public class RecipeMakerUI : UIState {
@@ -128,7 +129,7 @@ namespace DevHelp.UI {
 				3  => "InHive",
 				4  => "InGemCave",
 				5  => "InLihzhardTemple",
-				6  => "InGraveyardBiome",
+				6  => "InGraveyard",
 				7  => "InUndergroundDesert",
 				8  => "InDesert",
 				9  => "InGlowshroom",

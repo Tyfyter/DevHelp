@@ -70,8 +70,8 @@ namespace DevHelp {
     }
     public class DevSystem : ModSystem {
 		public override void AddRecipes() {
-            Recipe recipe = Recipe.Create(ItemID.HallowedKey);
-            recipe.AddIngredient(ItemID.HallowedKeyMold);
+            Recipe recipe = Recipe.Create(ItemID.BoringBow);
+            recipe.AddIngredient(ItemID.BoringBow);
             recipe.Register();
             DevHelp.customRecipeIndex = recipe.RecipeIndex;
         }
