@@ -29,6 +29,7 @@ namespace DevHelp.UI {
         public UILabeledCheckbox honey;
 		public UILabeledCheckbox[] otherConditions;
 		public static FastStaticFieldInfo<Condition>[] conditionFields;
+		public static FastStaticFieldInfo<Recipe[]> firstRecipeForItem;
 		public override void OnInitialize(){
             Main.UIScaleMatrix.Decompose(out Vector3 scale, out Quaternion _, out Vector3 _);
             materials.Add(new RefItemSlot(scale: 0.75f, context: ItemSlot.Context.ChestItem,
@@ -230,10 +231,16 @@ namespace DevHelp.UI {
             Dictionary<RecipeGroup, int> materialGroups = new Dictionary<RecipeGroup, int>();
             Item item;
             RecipeGroup recipeGroup;
-            Recipe recipe = DevHelp.RecipeMakerRecipe;
-            recipe.Clear();
+
+			Recipe recipe = DevHelp.RecipeMakerRecipe;
+
+			Recipe[] firstRecipeForItem = (RecipeMakerUI.firstRecipeForItem ??= new(typeof(RecipeLoader), "FirstRecipeForItem", BindingFlags.NonPublic)).GetValue();
+			if (recipe.createItem is not null && firstRecipeForItem[recipe.createItem.type] == recipe) firstRecipeForItem[recipe.createItem.type] = null;
+			recipe.Clear();
             recipe.ReplaceResult(outputItem.item.Value.type, outputItem.item.Value.stack);
-            for (int i = 0; i < materials.Count; i++) {
+			if (firstRecipeForItem[recipe.createItem.type] is null) firstRecipeForItem[recipe.createItem.type] = recipe;
+
+			for (int i = 0; i < materials.Count; i++) {
                 item = materials[i]?.item?.Value;
                 if (item?.IsAir??true) {
                     continue;
@@ -318,6 +325,7 @@ namespace DevHelp.UI {
 					recipe.AddCondition(conditionFields[i].GetValue());
 				}
 			}
+			DevHelp.RegenerateRequiredItemQuickLookup();
             output.Append(".Register();");
 			return output.ToString();
 		}

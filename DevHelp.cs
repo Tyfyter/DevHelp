@@ -22,6 +22,13 @@ using Terraria.UI.Chat;
 using System.IO;
 using System.Diagnostics;
 using System.Reflection.Emit;
+using MonoMod.Utils;
+using MonoMod.Cil;
+using Mono.Cecil.Cil;
+using MonoOpCodes = Mono.Cecil.Cil.OpCodes;
+using OpCodes = System.Reflection.Emit.OpCodes;
+using Mono.Cecil;
+using System.Text;
 
 namespace DevHelp {
 	public class DevHelp : Mod {
@@ -38,6 +45,7 @@ namespace DevHelp {
 		internal static RecipeMakerUI recipeMakerUI;
 		internal static int customRecipeIndex;
 		public static Recipe RecipeMakerRecipe => Main.recipe[customRecipeIndex];
+		internal static Action RegenerateRequiredItemQuickLookup;
 		public override void Load() {
 			instance = this;
 			if (Main.netMode != NetmodeID.Server) {
@@ -52,11 +60,47 @@ namespace DevHelp {
 					Assets.Request<Texture2D>("Button_Copy_Hovered")
 				};
 			}
-
 			AdvancedTooltipsHotkey = KeybindLoader.RegisterKeybind(this, "Toggle Advanced Tooltips", Keys.L.ToString());
 			RecipeMakerHotkey = KeybindLoader.RegisterKeybind(this, "Toggle Recipe Maker GUI", Keys.PageDown.ToString());
 			RarityImageHotkey = KeybindLoader.RegisterKeybind(this, "Save Rarity Name Image", Keys.PrintScreen.ToString());
+			DynamicMethodDefinition test = new(typeof(Recipe).GetMethod("CreateRequiredItemQuickLookups", BindingFlags.NonPublic | BindingFlags.Static));
+			bool startPoint = false;
+			bool firstLdLoc = false;
+			bool secondLdLoc = false;
+			///StringBuilder builder = new();
+			for (int i = 0; i < test.Definition.Body.Instructions.Count; i++) {
+				Instruction ins = test.Definition.Body.Instructions[i];
+				///builder.Clear();
+				///builder.Append($"{ins.Offset}: {ins.OpCode} {ins.Operand}");
+				if (!startPoint) {
+					if (ins.OpCode == MonoOpCodes.Ldsfld) {
+						startPoint = true;
+					} else {
+						test.Definition.Body.Instructions.RemoveAt(i--);
+						///builder.Append("; removed");
+					}
+				} else if (!firstLdLoc) {
+					if (ins.OpCode == MonoOpCodes.Ldloc_0) {
+						//TypeReference mod = new("DevHelp", nameof(DevHelp), new ModuleDefinition());
+						//FieldReference field = new FieldReference(nameof(customRecipeIndex), typeof(int), typeof(DevHelp));
+						FieldReference field = test.Module.ImportReference(typeof(DevHelp).GetField(nameof(customRecipeIndex), BindingFlags.NonPublic | BindingFlags.Static));
+						test.Definition.Body.Instructions[i] = Instruction.Create(MonoOpCodes.Ldsfld, field);
+						ins = test.Definition.Body.Instructions[i];
+						///builder.Append($"; replaced with {ins.Offset}: {ins.OpCode} {ins.Operand}");
+						firstLdLoc = true;
+					}
+				} else if (secondLdLoc || ins.OpCode == MonoOpCodes.Ldloc_0) {
+					secondLdLoc = true;
+					if (ins.OpCode != MonoOpCodes.Ret) {
+						test.Definition.Body.Instructions.RemoveAt(i--);
+						///builder.Append("; removed");
+					}
+				}
+				///Logger.Info(builder.ToString());
+			}
+			RegenerateRequiredItemQuickLookup = test.Generate().CreateDelegate<Action>();
 		}
+
 		public override void Unload() {
 			instance = null;
 			buttonTextures = null;
@@ -98,10 +142,6 @@ namespace DevHelp {
 		public static bool releaseAdvancedTooltips;
 		public static bool controlRecipeMaker;
 		public static bool releaseRecipeMaker;
-		Func<int, ModRarity> _getRarity;
-		Func<int, ModRarity> GetRarity => _getRarity ??= typeof(RarityLoader)
-			.GetMethod("GetRarity", BindingFlags.NonPublic | BindingFlags.Static)
-			.CreateDelegate<Func<int, ModRarity>>();
 		public override void ProcessTriggers(TriggersSet triggersSet) {
 			bool tick = false;
 
@@ -126,8 +166,9 @@ namespace DevHelp {
 			}
 
 			if (DevHelp.RarityImageHotkey.JustPressed) {
-				int rare = Main.HoverItem.rare;
-				Type itemModType = Main.HoverItem.ModItem?.GetType();
+				Item item = ((Main.HoverItem?.IsAir) ?? true) ? Main.LocalPlayer.HeldItem : Main.HoverItem;
+				int rare = item.rare;
+				Type itemModType = item.ModItem?.GetType();
 				//Task.Run(()=> {
 				Vector2 size = default;
 				string text = null;
@@ -139,7 +180,7 @@ namespace DevHelp {
 					color = Color.White;
 					if (itemModType.GetMethod("GetCustomRarityDraw") is MethodInfo customDraw) {
 						int frameNumber = 0;
-						foreach (var item in ((IEnumerable<(TextSnippet[] snippets, Vector2 offset, Color color)>)customDraw.Invoke(null, new object[] { text }))) {
+						foreach (var frame in ((IEnumerable<(TextSnippet[] snippets, Vector2 offset, Color color)>)customDraw.Invoke(null, new object[] { text }))) {
 							RenderTarget2D renderTarget = new(Main.graphics.GraphicsDevice, (int)size.X + 8, (int)size.Y + 8);
 							SpriteBatch spriteBatch = new(Main.graphics.GraphicsDevice);
 							renderTarget.GraphicsDevice.SetRenderTarget(renderTarget);
@@ -158,8 +199,8 @@ namespace DevHelp {
 								ChatManager.DrawColorCodedStringWithShadow(
 									Main.spriteBatch,
 									tooltipLine.Font,
-									item.snippets,
-									new Vector2(4, 4) + item.offset,
+									frame.snippets,
+									new Vector2(4, 4) + frame.offset,
 									tooltipLine.Rotation,
 									item.color,
 									tooltipLine.Origin,
@@ -181,7 +222,7 @@ namespace DevHelp {
 						}
 						text = null;
 					}
-				} else if (GetRarity(rare) is ModRarity rarity) {
+				} else if (RarityLoader.GetRarity(rare) is ModRarity rarity) {
 					if (rarity.GetType().GetProperty("RarityName") is PropertyInfo propertyInfo) {
 						text = (string)propertyInfo.GetValue(null);
 					} else {
@@ -369,6 +410,68 @@ namespace DevHelp {
 			return fastFieldInfo.GetValue();
 		}
 	}
+	public class UnsafeFastFieldInfo<T> {
+		public readonly FieldInfo field;
+		Func<object, T> getter;
+		Action<object, T> setter;
+		public UnsafeFastFieldInfo(Type type, string name, BindingFlags bindingFlags, bool init = false) {
+			field = type.GetField(name, bindingFlags | BindingFlags.Instance);
+			var ttttt = type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+			if (field is null) throw new ArgumentException($"could not find {name} in type {type} with flags {bindingFlags}");
+			if (init) {
+				getter = CreateGetter();
+				setter = CreateSetter();
+			}
+		}
+		public UnsafeFastFieldInfo(FieldInfo field, bool init = false) {
+			this.field = field;
+			if (init) {
+				getter = CreateGetter();
+				setter = CreateSetter();
+			}
+		}
+		public T GetValue(object parent) {
+			//if (field.FieldType != typeof(T)) throw new InvalidOperationException($"type of {field.Name} does not match provided type {typeof(T)}");
+			string methodName = field.ReflectedType.FullName + ".get_" + field.Name;
+			DynamicMethod getterMethod = new DynamicMethod(methodName, typeof(T), new Type[] { parent.GetType() }, true);
+			ILGenerator gen = getterMethod.GetILGenerator();
+
+			gen.Emit(OpCodes.Ldarg_0);
+			gen.Emit(OpCodes.Ldfld, field);
+			gen.Emit(OpCodes.Ret);
+
+			return (T)getterMethod.Invoke(null, new object[] { parent });
+			//return (getter ??= CreateGetter())(parent);
+		}
+		public void SetValue(object parent, T value) {
+			(setter ??= CreateSetter())(parent, value);
+		}
+		private Func<object, T> CreateGetter() {
+			//if (field.FieldType != typeof(T)) throw new InvalidOperationException($"type of {field.Name} does not match provided type {typeof(T)}");
+			string methodName = field.ReflectedType.FullName + ".get_" + field.Name;
+			DynamicMethod getterMethod = new DynamicMethod(methodName, typeof(T), new Type[] { typeof(object) }, true);
+			ILGenerator gen = getterMethod.GetILGenerator();
+
+			gen.Emit(OpCodes.Ldarg_0);
+			gen.Emit(OpCodes.Ldfld, field);
+			gen.Emit(OpCodes.Ret);
+
+			return (Func<object, T>)getterMethod.CreateDelegate(typeof(Func<object, T>));
+		}
+		private Action<object, T> CreateSetter() {
+			//if (field.FieldType != typeof(T)) throw new InvalidOperationException($"type of {field.Name} does not match provided type {typeof(T)}");
+			string methodName = field.ReflectedType.FullName + ".set_" + field.Name;
+			DynamicMethod setterMethod = new DynamicMethod(methodName, null, new Type[] { typeof(object), typeof(T) }, true);
+			ILGenerator gen = setterMethod.GetILGenerator();
+
+			gen.Emit(OpCodes.Ldarg_0);
+			gen.Emit(OpCodes.Ldarg_1);
+			gen.Emit(OpCodes.Stfld, field);
+			gen.Emit(OpCodes.Ret);
+
+			return (Action<object, T>)setterMethod.CreateDelegate(typeof(Action<object, T>));
+		}
+	}
 	public static class DevExtensions {
 		public static void Clear(this Recipe recipe) {
 			recipe.requiredItem.Clear();
@@ -376,6 +479,9 @@ namespace DevHelp {
 			recipe.Conditions.Clear();
 			typeof(Recipe).GetProperty("ConsumeItemHooks", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(recipe, null);
 			typeof(Recipe).GetProperty("OnCraftHooks", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(recipe, null);
+		}
+		public static void RegenerateRequiredItemQuickLookup(this Recipe recipe) {
+
 		}
 	}
 }
