@@ -3,3 +3,14 @@ Keybinds: {
 	"Toggle Recipe Maker GUI.DisplayName": Toggle Recipe Maker GUI
 	"Save Rarity Name Image.DisplayName": Save Rarity Name Image
 }
+
+Configs: {
+	DevHelpConfig: {
+		DisplayName: Dev Help Config
+
+		showFullBestiary: {
+			Label: Show All Bestiary Entries
+			Tooltip: If enabled, bestiary entries will always display as unlocked
+		}
+	}
+}

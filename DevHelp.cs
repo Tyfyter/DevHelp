@@ -29,6 +29,9 @@ using MonoOpCodes = Mono.Cecil.Cil.OpCodes;
 using OpCodes = System.Reflection.Emit.OpCodes;
 using Mono.Cecil;
 using System.Text;
+using Terraria.GameContent.Bestiary;
+using Terraria.ModLoader.Config;
+using System.ComponentModel;
 
 namespace DevHelp {
 	public class DevHelp : Mod {
@@ -99,6 +102,35 @@ namespace DevHelp {
 				///Logger.Info(builder.ToString());
 			}
 			RegenerateRequiredItemQuickLookup = test.Generate().CreateDelegate<Action>();
+			On_CommonEnemyUICollectionInfoProvider.GetUnlockStateByKillCount_int_bool_int += (orig, killCount, quickUnlock, fullKillCountNeeded) => {
+				if (DevHelpConfig.Instance.showFullBestiary) return BestiaryEntryUnlockState.CanShowDropsWithDropRates_4;
+				return orig(killCount, quickUnlock, fullKillCountNeeded);
+			};
+			On_CritterUICollectionInfoProvider.GetEntryUICollectionInfo += (orig, self) => {
+				BestiaryUICollectionInfo info = orig(self);
+				if (DevHelpConfig.Instance.showFullBestiary) info.UnlockState = BestiaryEntryUnlockState.CanShowDropsWithDropRates_4;
+				return info;
+			};
+			On_GoldCritterUICollectionInfoProvider.GetEntryUICollectionInfo += (orig, self) => {
+				BestiaryUICollectionInfo info = orig(self);
+				if (DevHelpConfig.Instance.showFullBestiary) info.UnlockState = BestiaryEntryUnlockState.CanShowDropsWithDropRates_4;
+				return info;
+			};
+			On_HighestOfMultipleUICollectionInfoProvider.GetEntryUICollectionInfo += (orig, self) => {
+				BestiaryUICollectionInfo info = orig(self);
+				if (DevHelpConfig.Instance.showFullBestiary) info.UnlockState = BestiaryEntryUnlockState.CanShowDropsWithDropRates_4;
+				return info;
+			};
+			On_SalamanderShellyDadUICollectionInfoProvider.GetEntryUICollectionInfo += (orig, self) => {
+				BestiaryUICollectionInfo info = orig(self);
+				if (DevHelpConfig.Instance.showFullBestiary) info.UnlockState = BestiaryEntryUnlockState.CanShowDropsWithDropRates_4;
+				return info;
+			};
+			On_TownNPCUICollectionInfoProvider.GetEntryUICollectionInfo += (orig, self) => {
+				BestiaryUICollectionInfo info = orig(self);
+				if (DevHelpConfig.Instance.showFullBestiary) info.UnlockState = BestiaryEntryUnlockState.CanShowDropsWithDropRates_4;
+				return info;
+			};
 		}
 
 		public override void Unload() {
@@ -111,6 +143,12 @@ namespace DevHelp {
 			recipeMakerUI = null;
 			RecipeMakerUI.conditionFields = null;
 		}
+	}
+	public class DevHelpConfig : ModConfig {
+		public override ConfigScope Mode => ConfigScope.ClientSide;
+		public static DevHelpConfig Instance;
+		[DefaultValue(false)]
+		public bool showFullBestiary;
 	}
 	public class DevSystem : ModSystem {
 		public override void AddRecipes() {
