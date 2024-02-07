@@ -2,6 +2,13 @@ This mod adds a few useful features for mod development
 
 Changelog:
 
+0.1.5:
+Added commands:
+Disables uploading mods if it can detect that they have ID desynchronization issues (configurable)
+/finddesyncs: searches for content which will cause ID desynchronization in multiplayer
+/recipeduplicates: lists duplicate recipes
+/checkdesync: prints all loaded items to text files to allow easier comparison across multiple users
+
 0.1.4:
 Updated to 1.4
 Added rarity name renderer

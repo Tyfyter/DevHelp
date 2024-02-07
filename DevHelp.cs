@@ -32,6 +32,10 @@ using System.Text;
 using Terraria.GameContent.Bestiary;
 using Terraria.ModLoader.Config;
 using System.ComponentModel;
+using System.Linq;
+using DevHelp.Commands;
+using Terraria.ModLoader.UI;
+using Terraria.Localization;
 
 namespace DevHelp {
 	public class DevHelp : Mod {
@@ -131,6 +135,73 @@ namespace DevHelp {
 				if (DevHelpConfig.Instance.showFullBestiary) info.UnlockState = BestiaryEntryUnlockState.CanShowDropsWithDropRates_4;
 				return info;
 			};
+			if (DevHelpConfig.Instance.disableBrokenModUploading) {
+				Assembly tML = typeof(UIModsFilterResults).Assembly;
+				UIModSourceItem = tML.GetType("Terraria.ModLoader.UI.UIModSourceItem");
+				MonoModHooks.Modify(UIModSourceItem.GetConstructor(new Type[] { typeof(string), tML.GetType("Terraria.ModLoader.Core.LocalMod") }), UIModSourceItem_ctor);
+			}
+		}
+		Type UIModSourceItem;
+		delegate bool DisablePublishButton(string modName, UIElement self, UIAutoScaleTextTextPanel<string> buildReloadButton);
+		public class BrokenModWarningTextPanel : UIAutoScaleTextTextPanel<string> {
+			string tooltip;
+			public BrokenModWarningTextPanel(string text, string tooltip, float textScaleMax = 1, bool large = false) : base(text, textScaleMax, large) {
+				this.tooltip = tooltip;
+			}
+			protected override void DrawSelf(SpriteBatch spriteBatch) {
+				base.DrawSelf(spriteBatch);
+				if (IsMouseHovering) {
+					UICommon.DrawHoverStringInBounds(spriteBatch, tooltip, Parent.GetOuterDimensions().ToRectangle());
+				}
+			}
+		}
+		private void UIModSourceItem_ctor(ILContext il) {
+			try {
+				BindingFlags instFld = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+				ILCursor c = new(il);
+				ILLabel notChangedLabel = default;
+				int buildReloadButton = -1;
+				FieldInfo modName = UIModSourceItem.GetField("modName", instFld);
+				c.TryGotoNext(MoveType.AfterLabel, 
+					i => i.MatchLdsfld(typeof(LocalizationLoader), "changedMods"),
+					i => i.MatchLdarg0(),
+					i => i.MatchLdfld(modName),
+					i => i.MatchCallOrCallvirt<HashSet<string>>("Contains"),
+					i => i.MatchBrfalse(out notChangedLabel)
+				);
+				c.TryGotoNext(
+					 i => i.MatchLdloc(out buildReloadButton),
+					 i => i.MatchCall<UIElement>("CopyStyle")
+				 );
+				c.GotoLabel(notChangedLabel, MoveType.AfterLabel);
+				ILLabel skipLabel = (ILLabel)c.Prev.Operand;
+				c.EmitLdarg0();
+				c.EmitLdfld(modName);
+				c.EmitLdarg0();
+				c.EmitBox(typeof(UIElement));
+				c.EmitLdloc(buildReloadButton);
+				static bool _DisablePublishButton(string modName, UIElement self, UIAutoScaleTextTextPanel<string> buildReloadButton) {
+					List<ModType> brokenContent = new();
+					if (ModLoader.TryGetMod(modName, out Mod mod) && DebugItemLoadDesyncCommand.FindLoadEnabledDesyncs(mod, brokenContent.Add)) {
+						BrokenModWarningTextPanel needRebuildButton = new (Language.GetTextValue("Mods.DevHelp.Warnings.UnsyncedContentLoading"), string.Join("\n", brokenContent.Select(c => c.Name)));
+						needRebuildButton.CopyStyle(buildReloadButton);
+						needRebuildButton.Height.Pixels = 36f;
+						needRebuildButton.Top.Pixels = 40f;
+						needRebuildButton.Width.Pixels = 180f;
+						needRebuildButton.Left.Pixels = 360f;
+						needRebuildButton.BackgroundColor = Color.Red;
+						needRebuildButton.MaxWidth.Percent = 1;
+						needRebuildButton.MaxHeight.Percent = 1;
+						self.Append(needRebuildButton);
+						return true;
+					}
+					return false;
+				}
+				c.EmitDelegate<DisablePublishButton>(_DisablePublishButton);
+				c.EmitBrtrue(skipLabel);
+			} catch (Exception ex) {
+				Logger.Error("Could not hook UIModSourceItem_ctor", ex);
+			}
 		}
 
 		public override void Unload() {
@@ -149,6 +220,10 @@ namespace DevHelp {
 		public static DevHelpConfig Instance;
 		[DefaultValue(false)]
 		public bool showFullBestiary;
+
+		[DefaultValue(true)]
+		[ReloadRequired]
+		public bool disableBrokenModUploading;
 	}
 	public class DevSystem : ModSystem {
 		public override void AddRecipes() {
@@ -520,6 +595,14 @@ namespace DevHelp {
 		}
 		public static void RegenerateRequiredItemQuickLookup(this Recipe recipe) {
 
+		}
+		public static bool Overrides(this Type type, MethodInfo baseMethod) {
+			MethodInfo newMethod = type.GetMethod(baseMethod.Name, baseMethod.GetParameters().Select(p => p.ParameterType).ToArray());
+			return newMethod.GetBaseDefinition() == baseMethod && baseMethod.DeclaringType != newMethod.DeclaringType;
+		}
+		public static bool Overrides(this Type type, MethodInfo baseMethod, out MethodInfo @override) {
+			@override = type.GetMethod(baseMethod.Name, baseMethod.GetParameters().Select(p => p.ParameterType).ToArray());
+			return @override.GetBaseDefinition() == baseMethod && baseMethod.DeclaringType != @override.DeclaringType;
 		}
 	}
 }

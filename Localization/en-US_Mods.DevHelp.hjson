@@ -1,3 +1,5 @@
+Warnings.UnsyncedContentLoading: Content will cause ID desynchronization
+
 Keybinds: {
 	"Toggle Advanced Tooltips.DisplayName": Toggle Advanced Tooltips
 	"Toggle Recipe Maker GUI.DisplayName": Toggle Recipe Maker GUI
@@ -11,6 +13,18 @@ Configs: {
 		showFullBestiary: {
 			Label: Show All Bestiary Entries
 			Tooltip: If enabled, bestiary entries will always display as unlocked
+		}
+
+		disableBrokenModUploading: {
+			Label: Disable Broken Mod Uploading
+			Tooltip:
+				'''
+				Prevents mods which have major, detectable problems from being uploaded
+				This should only ever be disabled if it is broken or undefined behavior is a feature of your mod
+				If the former is the case, please report an issue at DevHelp's homepage
+				Currently detected issues:
+				Content which checks if a non-synchronized mod is present in IsLoadingEnabled (causes ID desynchronization in multiplayer)
+				'''
 		}
 	}
 }
