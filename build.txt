@@ -1,7 +1,7 @@
 author = Tyfyter (Tyfyter2002 on steam)
 
 
-version = 0.1.5
+version = 0.1.6
 displayName = Dev Helper
 
 

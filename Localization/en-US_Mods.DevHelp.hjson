@@ -1,4 +1,7 @@
-Warnings.UnsyncedContentLoading: Content will cause ID desynchronization
+Warnings: {
+	UnsyncedContentLoading: Content will cause ID desynchronization
+	DNP: This mod is flagged as DNP
+}
 
 Keybinds: {
 	"Toggle Advanced Tooltips.DisplayName": Toggle Advanced Tooltips

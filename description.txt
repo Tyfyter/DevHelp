@@ -2,6 +2,10 @@ This mod adds a few useful features for mod development
 
 Changelog:
 
+0.1.6:
+Added mod flags (Declare a public static property named DevFlags which returns IEnumerable<string> or string[] to use them)
+Currently the only flag supported is DNP/do not post/do not publish, which prevents the mod being published to the steam workshop, useful for preventing accidental publishing of incomplete versions
+
 0.1.5:
 Added commands:
 Disables uploading mods if it can detect that they have ID desynchronization issues (configurable)

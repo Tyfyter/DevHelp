@@ -135,11 +135,9 @@ namespace DevHelp {
 				if (DevHelpConfig.Instance.showFullBestiary) info.UnlockState = BestiaryEntryUnlockState.CanShowDropsWithDropRates_4;
 				return info;
 			};
-			if (DevHelpConfig.Instance.disableBrokenModUploading) {
-				Assembly tML = typeof(UIModsFilterResults).Assembly;
-				UIModSourceItem = tML.GetType("Terraria.ModLoader.UI.UIModSourceItem");
-				MonoModHooks.Modify(UIModSourceItem.GetConstructor(new Type[] { typeof(string), tML.GetType("Terraria.ModLoader.Core.LocalMod") }), UIModSourceItem_ctor);
-			}
+			Assembly tML = typeof(UIModsFilterResults).Assembly;
+			UIModSourceItem = tML.GetType("Terraria.ModLoader.UI.UIModSourceItem");
+			MonoModHooks.Modify(UIModSourceItem.GetConstructor(new Type[] { typeof(string), tML.GetType("Terraria.ModLoader.Core.LocalMod") }), UIModSourceItem_ctor);
 		}
 		Type UIModSourceItem;
 		delegate bool DisablePublishButton(string modName, UIElement self, UIAutoScaleTextTextPanel<string> buildReloadButton);
@@ -181,19 +179,36 @@ namespace DevHelp {
 				c.EmitBox(typeof(UIElement));
 				c.EmitLdloc(buildReloadButton);
 				static bool _DisablePublishButton(string modName, UIElement self, UIAutoScaleTextTextPanel<string> buildReloadButton) {
-					List<ModType> brokenContent = new();
-					if (ModLoader.TryGetMod(modName, out Mod mod) && DebugItemLoadDesyncCommand.FindLoadEnabledDesyncs(mod, brokenContent.Add)) {
-						BrokenModWarningTextPanel needRebuildButton = new (Language.GetTextValue("Mods.DevHelp.Warnings.UnsyncedContentLoading"), string.Join("\n", brokenContent.Select(c => c.Name)));
-						needRebuildButton.CopyStyle(buildReloadButton);
-						needRebuildButton.Height.Pixels = 36f;
-						needRebuildButton.Top.Pixels = 40f;
-						needRebuildButton.Width.Pixels = 180f;
-						needRebuildButton.Left.Pixels = 360f;
-						needRebuildButton.BackgroundColor = Color.Red;
-						needRebuildButton.MaxWidth.Percent = 1;
-						needRebuildButton.MaxHeight.Percent = 1;
-						self.Append(needRebuildButton);
-						return true;
+					if (ModLoader.TryGetMod(modName, out Mod mod)) {
+						foreach (string flag in mod.GetFlags()) {
+							if (flag.ToUpperInvariant().Replace(" ", "") is "DNP" or "DONOTPOST" or "DONOTPUBLISH") {
+								BrokenModWarningTextPanel needRebuildButton = new(Language.GetTextValue("Mods.DevHelp.Warnings.DNP"), "");
+								needRebuildButton.CopyStyle(buildReloadButton);
+								needRebuildButton.Height.Pixels = 36f;
+								needRebuildButton.Top.Pixels = 40f;
+								needRebuildButton.Width.Pixels = 180f;
+								needRebuildButton.Left.Pixels = 360f;
+								needRebuildButton.BackgroundColor = Color.Red;
+								needRebuildButton.MaxWidth.Percent = 1;
+								needRebuildButton.MaxHeight.Percent = 1;
+								self.Append(needRebuildButton);
+								return true;
+							}
+						}
+						List<ModType> brokenContent = new();
+						if (DevHelpConfig.Instance.disableBrokenModUploading && DebugItemLoadDesyncCommand.FindLoadEnabledDesyncs(mod, brokenContent.Add)) {
+							BrokenModWarningTextPanel needRebuildButton = new(Language.GetTextValue("Mods.DevHelp.Warnings.UnsyncedContentLoading"), string.Join("\n", brokenContent.Select(c => c.Name)));
+							needRebuildButton.CopyStyle(buildReloadButton);
+							needRebuildButton.Height.Pixels = 36f;
+							needRebuildButton.Top.Pixels = 40f;
+							needRebuildButton.Width.Pixels = 180f;
+							needRebuildButton.Left.Pixels = 360f;
+							needRebuildButton.BackgroundColor = Color.Red;
+							needRebuildButton.MaxWidth.Percent = 1;
+							needRebuildButton.MaxHeight.Percent = 1;
+							self.Append(needRebuildButton);
+							return true;
+						}
 					}
 					return false;
 				}
@@ -603,6 +618,22 @@ namespace DevHelp {
 		public static bool Overrides(this Type type, MethodInfo baseMethod, out MethodInfo @override) {
 			@override = type.GetMethod(baseMethod.Name, baseMethod.GetParameters().Select(p => p.ParameterType).ToArray());
 			return @override.GetBaseDefinition() == baseMethod && baseMethod.DeclaringType != @override.DeclaringType;
+		}
+		static IEnumerable<string> ReadFlags(PropertyInfo devFlags) {
+			if (devFlags.PropertyType == typeof(IEnumerable<string>)) return (IEnumerable<string>)devFlags.GetValue(null);
+			if (devFlags.PropertyType == typeof(string[])) return (string[])devFlags.GetValue(null);
+			if (devFlags.PropertyType == typeof(List<string>)) return (List<string>)devFlags.GetValue(null);
+			throw new InvalidCastException($"{devFlags.PropertyType} is not a valid type, use {nameof(IEnumerable<string>)} or {nameof(String)}[]");
+		}
+		public static IEnumerable<string> GetFlags(this Mod mod) {
+			if (mod.GetType().GetProperty("DevFlags", BindingFlags.Public | BindingFlags.Static) is PropertyInfo devFlags) {
+				try {
+					return ReadFlags(devFlags);
+				} catch (InvalidCastException e) {
+					DevHelp.instance.Logger.Error($"error while reading flags of {mod.DisplayNameClean}: {e.Message}");
+				}
+			}
+			return Array.Empty<string>();
 		}
 	}
 }
