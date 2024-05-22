@@ -36,6 +36,11 @@ using System.Linq;
 using DevHelp.Commands;
 using Terraria.ModLoader.UI;
 using Terraria.Localization;
+using Terraria.Social.Steam;
+using Terraria.ModLoader.Core;
+using System.Net.Http;
+using System.Threading;
+using System.Net.Http.Json;
 
 namespace DevHelp {
 	public class DevHelp : Mod {
@@ -43,6 +48,7 @@ namespace DevHelp {
 		public static ModKeybind AdvancedTooltipsHotkey { get; private set; }
 		public static ModKeybind RecipeMakerHotkey { get; private set; }
 		public static ModKeybind RarityImageHotkey { get; private set; }
+		public static ModKeybind PickItemHotkey { get; private set; }
 
 		public static bool readtooltips = false;
 
@@ -70,6 +76,7 @@ namespace DevHelp {
 			AdvancedTooltipsHotkey = KeybindLoader.RegisterKeybind(this, "Toggle Advanced Tooltips", Keys.L.ToString());
 			RecipeMakerHotkey = KeybindLoader.RegisterKeybind(this, "Toggle Recipe Maker GUI", Keys.PageDown.ToString());
 			RarityImageHotkey = KeybindLoader.RegisterKeybind(this, "Save Rarity Name Image", Keys.PrintScreen.ToString());
+			PickItemHotkey = KeybindLoader.RegisterKeybind(this, "Pick Item", "mouse3");
 			DynamicMethodDefinition test = new(typeof(Recipe).GetMethod("CreateRequiredItemQuickLookups", BindingFlags.NonPublic | BindingFlags.Static));
 			bool startPoint = false;
 			bool firstLdLoc = false;
@@ -138,6 +145,7 @@ namespace DevHelp {
 			Assembly tML = typeof(UIModsFilterResults).Assembly;
 			UIModSourceItem = tML.GetType("Terraria.ModLoader.UI.UIModSourceItem");
 			MonoModHooks.Modify(UIModSourceItem.GetConstructor(new Type[] { typeof(string), tML.GetType("Terraria.ModLoader.Core.LocalMod") }), UIModSourceItem_ctor);
+			//MonoModHooks.Modify(typeof(WorkshopHelper).GetMethod("PublishMod"), AutoRelease.PublishModHook);
 		}
 		Type UIModSourceItem;
 		delegate bool DisablePublishButton(string modName, UIElement self, UIAutoScaleTextTextPanel<string> buildReloadButton);
@@ -218,7 +226,6 @@ namespace DevHelp {
 				Logger.Error("Could not hook UIModSourceItem_ctor", ex);
 			}
 		}
-
 		public override void Unload() {
 			instance = null;
 			buttonTextures = null;
@@ -277,6 +284,7 @@ namespace DevHelp {
 			//controlAdvancedTooltips = triggersSet.KeyStatus["DevHelp: Toggle Advanced Tooltips"];
 			if (DevHelp.AdvancedTooltipsHotkey.JustPressed) {
 				DevHelp.readtooltips = !DevHelp.readtooltips;
+				//AutoRelease.GetDeviceCode().ContinueWith(t => Main.NewText(t.Result));
 				tick = true;
 			}
 
@@ -465,9 +473,61 @@ namespace DevHelp {
 				tick = true;
 			}
 
+			if (DevHelp.PickItemHotkey.JustPressed) {
+				if (Main.netMode == NetmodeID.SinglePlayer && Main.mouseItem?.IsAir != false && Main.HoverItem?.IsAir == false) {
+					Main.mouseItem.SetDefaults(Main.HoverItem.type);
+					if (Main.keyState.PressingShift()) Main.mouseItem.stack = Main.mouseItem.maxStack;
+				}
+			}
+
 			if (tick) {
 				SoundEngine.PlaySound(SoundID.MenuTick);
 			}
+		}
+	}
+	internal static class AutoRelease {
+		private static readonly HttpClient httpClient = new();
+		const string client_id = "Iv1.1a95ed6af18548bd";
+		internal static void PublishModHook(ILContext il) {
+			ILCursor c = new(il);
+			c.Index = il.Body.Instructions.Count - 1;
+			c.MoveAfterLabels();
+			c.EmitLdarg0();
+			c.EmitLdfld(typeof(TmodFile).Assembly.GetType("Terraria.ModLoader.Core.LocalMod").GetField("modFile"));
+			c.EmitDelegate((TmodFile modFile) => {
+				using FileStream stream = File.OpenRead(modFile.path);
+
+			});
+		}
+		public static async Task<Dictionary<string, string>> ReadResponseData(HttpResponseMessage response) {
+			return new Dictionary<string, string>((await response.Content.ReadAsStringAsync()).Split('&').Select(v => {
+				string[] sides = v.Split('=');
+				return new KeyValuePair<string, string>(sides[0], sides[1]);
+			}));
+		}
+		public static async Task<Dictionary<string, string>> GetDeviceCode() {
+			FormUrlEncodedContent content = new FormUrlEncodedContent(new Dictionary<string, string>() {
+				["client_id"] = client_id
+			});
+			HttpResponseMessage response = await httpClient.PostAsync("https://github.com/login/device/code", content);
+			return await ReadResponseData(response);
+		}
+		public static async Task<Dictionary<string, string>> RequestToken(string device_code) {
+			FormUrlEncodedContent content = new FormUrlEncodedContent(new Dictionary<string, string>() {
+				["client_id"] = client_id,
+				["device_code"] = device_code,
+				["grant_type"] = "urn:ietf:params:oauth:grant-type:device_code"
+			});
+			HttpResponseMessage response = await httpClient.PostAsync("https://github.com/login/oauth/access_token", content);
+			return await ReadResponseData(response);
+		}
+		public static async Task<string> RequestAndWaitForToken(string device_code) {
+			retry:
+			Dictionary<string, string> response = await RequestToken(device_code);
+			/*if () {
+				SpinWait.
+			}*/
+			return null;
 		}
 	}
 	public struct AutoCastingAsset<T> where T : class {
@@ -635,5 +695,6 @@ namespace DevHelp {
 			}
 			return Array.Empty<string>();
 		}
+
 	}
 }

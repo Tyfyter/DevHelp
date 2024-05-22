@@ -7,6 +7,7 @@ Keybinds: {
 	"Toggle Advanced Tooltips.DisplayName": Toggle Advanced Tooltips
 	"Toggle Recipe Maker GUI.DisplayName": Toggle Recipe Maker GUI
 	"Save Rarity Name Image.DisplayName": Save Rarity Name Image
+	"Pick Item.DisplayName": Pick Item
 }
 
 Configs: {

@@ -156,7 +156,7 @@ namespace DevHelp.Commands {
 		}
 		static void FillFromEntity(List<(string globalName, string entityName, Action<BitWriter, BinaryWriter> send, Action<BitReader, BinaryReader> recieve)> functions, Entity entity) {
 			if (entity is NPC npc) {
-				foreach (GlobalNPC global in npc.Globals.GetEnumerator()) {
+				foreach (GlobalNPC global in npc.Globals) {
 					functions.Add((
 						global.FullName,
 						npc.FullName,
@@ -167,7 +167,7 @@ namespace DevHelp.Commands {
 				return;
 			}
 			if (entity is Item item) {
-				foreach (GlobalItem global in item.Globals.GetEnumerator()) {
+				foreach (GlobalItem global in item.Globals) {
 					functions.Add((
 						global.FullName,
 						item.Name,
@@ -178,7 +178,7 @@ namespace DevHelp.Commands {
 				return;
 			}
 			if (entity is Projectile projectile) {
-				foreach (GlobalProjectile global in projectile.Globals.GetEnumerator()) {
+				foreach (GlobalProjectile global in projectile.Globals) {
 					functions.Add((
 						global.FullName,
 						projectile.Name,
