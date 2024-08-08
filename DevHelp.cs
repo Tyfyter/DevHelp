@@ -144,7 +144,9 @@ namespace DevHelp {
 			};
 			Assembly tML = typeof(UIModsFilterResults).Assembly;
 			UIModSourceItem = tML.GetType("Terraria.ModLoader.UI.UIModSourceItem");
-			MonoModHooks.Modify(UIModSourceItem.GetConstructor(new Type[] { typeof(string), tML.GetType("Terraria.ModLoader.Core.LocalMod") }), UIModSourceItem_ctor);
+			Type LocalMod = tML.GetType("Terraria.ModLoader.Core.LocalMod");
+			ConstructorInfo ctor = UIModSourceItem.GetConstructor([typeof(string), LocalMod, typeof(CancellationToken)]);
+			MonoModHooks.Modify(ctor, UIModSourceItem_ctor);
 			//MonoModHooks.Modify(typeof(WorkshopHelper).GetMethod("PublishMod"), AutoRelease.PublishModHook);
 		}
 		Type UIModSourceItem;
