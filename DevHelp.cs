@@ -41,6 +41,7 @@ using Terraria.ModLoader.Core;
 using System.Net.Http;
 using System.Threading;
 using System.Net.Http.Json;
+using Terraria.GameContent.Creative;
 
 namespace DevHelp {
 	public class DevHelp : Mod {
@@ -476,9 +477,20 @@ namespace DevHelp {
 			}
 
 			if (DevHelp.PickItemHotkey.JustPressed) {
-				if (Main.netMode == NetmodeID.SinglePlayer && Main.mouseItem?.IsAir != false && Main.HoverItem?.IsAir == false) {
-					Main.mouseItem.SetDefaults(Main.HoverItem.type);
-					if (Main.keyState.PressingShift()) Main.mouseItem.stack = Main.mouseItem.maxStack;
+				if (Main.mouseItem?.IsAir != false && Main.HoverItem?.IsAir == false) {
+					bool canPick = false;
+					if (Main.netMode == NetmodeID.SinglePlayer) {
+						canPick = true;
+					} else {
+						if (CreativeItemSacrificesCatalog.Instance.SacrificeCountNeededByItemId.TryGetValue(Main.HoverItem.type, out int needed) && Main.LocalPlayerCreativeTracker.ItemSacrifices.GetSacrificeCount(Main.HoverItem.type) >= needed) {
+							canPick = true;
+						}
+						//HERO's mod compat here
+					}
+					if (canPick) {
+						Main.mouseItem.SetDefaults(Main.HoverItem.type);
+						if (Main.keyState.PressingShift()) Main.mouseItem.stack = Main.mouseItem.maxStack;
+					}
 				}
 			}
 
