@@ -1,17 +1,15 @@
 author = Tyfyter (Tyfyter2002 on steam)
 
-
-version = 0.1.6
+version = 0.1.8
 displayName = Dev Helper
 
-
 side = NoSync
-
 
 homepage = https://tyfyter.github.io/?DevHelp
 
 includeSource = true
-
 hideCode = false
-
 hideResources = false
+
+modReferences = PegasusLib
+sortAfter = HEROsMod

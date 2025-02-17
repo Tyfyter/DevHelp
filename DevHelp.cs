@@ -42,12 +42,14 @@ using System.Net.Http;
 using System.Threading;
 using System.Net.Http.Json;
 using Terraria.GameContent.Creative;
+using Microsoft.Build.Tasks;
 
 namespace DevHelp {
 	public class DevHelp : Mod {
 		internal static DevHelp instance;
 		public static ModKeybind AdvancedTooltipsHotkey { get; private set; }
 		public static ModKeybind RecipeMakerHotkey { get; private set; }
+		public static ModKeybind BiomeSelectorHotkey { get; private set; }
 		public static ModKeybind RarityImageHotkey { get; private set; }
 		public static ModKeybind PickItemHotkey { get; private set; }
 
@@ -57,26 +59,30 @@ namespace DevHelp {
 
 		internal static UserInterface UI;
 		internal static RecipeMakerUI recipeMakerUI;
+		internal static BiomeSelectorUI biomeSelectorUI;
 		internal static int customRecipeIndex;
 		public static Recipe RecipeMakerRecipe => Main.recipe[customRecipeIndex];
 		internal static Action RegenerateRequiredItemQuickLookup;
+		internal static List<Action<Player>> forcedVanillaBiomes = [];
+		public static HashSet<ModBiome> forcedModBiomes = [];
 		public override void Load() {
 			instance = this;
 			if (Main.netMode != NetmodeID.Server) {
 				UI = new UserInterface();
 
-				buttonTextures = new AutoCastingAsset<Texture2D>[] {
+				buttonTextures = [
 					Assets.Request<Texture2D>("Checkbox"),
 					Assets.Request<Texture2D>("Checkbox_Hovered"),
 					Assets.Request<Texture2D>("Checkbox_Selected"),
 					Assets.Request<Texture2D>("Checkbox_Selected_Hovered"),
 					Assets.Request<Texture2D>("Button_Copy"),
 					Assets.Request<Texture2D>("Button_Copy_Hovered")
-				};
+				];
 			}
-			AdvancedTooltipsHotkey = KeybindLoader.RegisterKeybind(this, "Toggle Advanced Tooltips", Keys.L.ToString());
-			RecipeMakerHotkey = KeybindLoader.RegisterKeybind(this, "Toggle Recipe Maker GUI", Keys.PageDown.ToString());
-			RarityImageHotkey = KeybindLoader.RegisterKeybind(this, "Save Rarity Name Image", Keys.PrintScreen.ToString());
+			AdvancedTooltipsHotkey = KeybindLoader.RegisterKeybind(this, "Toggle Advanced Tooltips", Keys.L);
+			RecipeMakerHotkey = KeybindLoader.RegisterKeybind(this, "Toggle Recipe Maker GUI", Keys.PageDown);
+			BiomeSelectorHotkey = KeybindLoader.RegisterKeybind(this, "Toggle Biome Selector GUI", Keys.PageUp);
+			RarityImageHotkey = KeybindLoader.RegisterKeybind(this, "Save Rarity Name Image", Keys.PrintScreen);
 			PickItemHotkey = KeybindLoader.RegisterKeybind(this, "Pick Item", "mouse3");
 			DynamicMethodDefinition test = new(typeof(Recipe).GetMethod("CreateRequiredItemQuickLookups", BindingFlags.NonPublic | BindingFlags.Static));
 			bool startPoint = false;
@@ -148,8 +154,34 @@ namespace DevHelp {
 			Type LocalMod = tML.GetType("Terraria.ModLoader.Core.LocalMod");
 			ConstructorInfo ctor = UIModSourceItem.GetConstructor([typeof(string), LocalMod, typeof(CancellationToken)]);
 			MonoModHooks.Modify(ctor, UIModSourceItem_ctor);
-			//MonoModHooks.Modify(typeof(WorkshopHelper).GetMethod("PublishMod"), AutoRelease.PublishModHook);
+			MonoModHooks.Modify(typeof(BiomeLoader).GetMethod(nameof(BiomeLoader.UpdateBiomes)), IL_BiomeLoader_UpdateBiomes);
+			IL_Player.UpdateBiomes += IL_Player_UpdateBiomes;
 		}
+
+		private void IL_Player_UpdateBiomes(ILContext il) {
+			ILCursor c = new(il);
+			c.GotoNext(MoveType.AfterLabel,
+				i => i.MatchCall(out MethodReference meth),
+				i => i.MatchLdarg0(),
+				i => i.MatchCallOrCallvirt<SceneEffectLoader>(nameof(SceneEffectLoader.UpdateSceneEffect))
+			);
+			c.EmitLdarg0();
+			c.EmitDelegate((Player player) => {
+				for (int i = 0; i < forcedVanillaBiomes.Count; i++) {
+					forcedVanillaBiomes[i](player);
+				}
+			});
+		}
+
+		private void IL_BiomeLoader_UpdateBiomes(ILContext il) {
+			ILCursor c = new(il);
+			c.GotoNext(MoveType.Before, i => i.MatchCallOrCallvirt<ModBiome>(nameof(ModBiome.IsBiomeActive)));
+			c.Index--;
+			c.EmitDup();
+			c.Index += 2;
+			c.EmitDelegate((ModBiome biome, bool active) => active || forcedModBiomes.Contains(biome));
+		}
+
 		Type UIModSourceItem;
 		delegate bool DisablePublishButton(string modName, UIElement self, UIAutoScaleTextTextPanel<string> buildReloadButton);
 		public class BrokenModWarningTextPanel : UIAutoScaleTextTextPanel<string> {
@@ -171,7 +203,7 @@ namespace DevHelp {
 				ILLabel notChangedLabel = default;
 				int buildReloadButton = -1;
 				FieldInfo modName = UIModSourceItem.GetField("modName", instFld);
-				c.TryGotoNext(MoveType.AfterLabel, 
+				c.TryGotoNext(MoveType.AfterLabel,
 					i => i.MatchLdsfld(typeof(LocalizationLoader), "changedMods"),
 					i => i.MatchLdarg0(),
 					i => i.MatchLdfld(modName),
@@ -206,7 +238,23 @@ namespace DevHelp {
 								return true;
 							}
 						}
-						List<ModType> brokenContent = new();
+						if (mod.GetType().GetProperty("DevHelpBrokenReason", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static) is PropertyInfo brokenReason) {
+							string reason = brokenReason.GetValue(null) as string;
+							if (!string.IsNullOrWhiteSpace(reason)) {
+								BrokenModWarningTextPanel needRebuildButton = new(Language.GetTextValue("Mods.DevHelp.Warnings.SelfReportBroken"), reason);
+								needRebuildButton.CopyStyle(buildReloadButton);
+								needRebuildButton.Height.Pixels = 36f;
+								needRebuildButton.Top.Pixels = 40f;
+								needRebuildButton.Width.Pixels = 180f;
+								needRebuildButton.Left.Pixels = 360f;
+								needRebuildButton.BackgroundColor = Color.Red;
+								needRebuildButton.MaxWidth.Percent = 1;
+								needRebuildButton.MaxHeight.Percent = 1;
+								self.Append(needRebuildButton);
+								return true;
+							}
+						}
+						List<ModType> brokenContent = [];
 						if (DevHelpConfig.Instance.disableBrokenModUploading && DebugItemLoadDesyncCommand.FindLoadEnabledDesyncs(mod, brokenContent.Add)) {
 							BrokenModWarningTextPanel needRebuildButton = new(Language.GetTextValue("Mods.DevHelp.Warnings.UnsyncedContentLoading"), string.Join("\n", brokenContent.Select(c => c.Name)));
 							needRebuildButton.CopyStyle(buildReloadButton);
@@ -238,17 +286,29 @@ namespace DevHelp {
 			UI = null;
 			recipeMakerUI = null;
 			RecipeMakerUI.conditionFields = null;
+			forcedModBiomes = null;
+		}
+		// for DevHelper
+		static string DevHelpBrokenReason {
+			get {
+#if DEBUG
+				return "Mod was last built in DEBUG configuration";
+#endif
+				return null;
+			}
 		}
 	}
 	public class DevHelpConfig : ModConfig {
 		public override ConfigScope Mode => ConfigScope.ClientSide;
 		public static DevHelpConfig Instance;
 		[DefaultValue(false)]
-		public bool showFullBestiary;
+		public bool showFullBestiary = false;
+		[DefaultValue(true)]
+		public bool showNamesInBestiary = true;
 
 		[DefaultValue(true)]
 		[ReloadRequired]
-		public bool disableBrokenModUploading;
+		public bool disableBrokenModUploading = true;
 	}
 	public class DevSystem : ModSystem {
 		public override void AddRecipes() {
@@ -280,6 +340,19 @@ namespace DevHelp {
 		public static bool releaseAdvancedTooltips;
 		public static bool controlRecipeMaker;
 		public static bool releaseRecipeMaker;
+		Func<bool> _hasBiomeControlPermission;
+		public bool HasBiomeControlPermission {
+			get {
+				if (Main.netMode == NetmodeID.SinglePlayer) return true;
+				if (_hasBiomeControlPermission is not null) return _hasBiomeControlPermission();
+				if (ModLoader.TryGetMod("HEROsMod", out Mod HEROsMod)) {
+					HEROsMod.Call("AddPermission", "UseBiomeSelector", Language.GetOrRegister("Mods.DevHelp.UseBiomeSelector").Value);
+					_hasBiomeControlPermission = () => (bool)HEROsMod.Call("HasPermission", Player.whoAmI, "UseBiomeSelector");
+					return _hasBiomeControlPermission();
+				}
+				return false;
+			}
+		}
 		public override void ProcessTriggers(TriggersSet triggersSet) {
 			bool tick = false;
 
@@ -300,6 +373,16 @@ namespace DevHelp {
 					DevHelp.UI.SetState(DevHelp.recipeMakerUI);
 				} else {
 					DevHelp.UI.SetState(DevHelp.recipeMakerUI = null);
+				}
+				tick = true;
+			}
+			if (DevHelp.BiomeSelectorHotkey.JustPressed && HasBiomeControlPermission) {
+				if (DevHelp.biomeSelectorUI is null) {
+					DevHelp.biomeSelectorUI = new BiomeSelectorUI();
+					DevHelp.biomeSelectorUI.Activate();
+					DevHelp.UI.SetState(DevHelp.biomeSelectorUI);
+				} else {
+					DevHelp.UI.SetState(DevHelp.biomeSelectorUI = null);
 				}
 				tick = true;
 			}
@@ -418,7 +501,7 @@ namespace DevHelp {
 						}
 						text = null;
 					}
-				} else if(ItemRarityID.Search.TryGetName(rare, out string name)) {
+				} else if (ItemRarityID.Search.TryGetName(rare, out string name)) {
 					size = FontAssets.MouseText.Value.MeasureString(name);
 					text = name;
 					color = ItemRarity.GetColor(rare);
@@ -483,6 +566,8 @@ namespace DevHelp {
 						canPick = true;
 					} else {
 						if (CreativeItemSacrificesCatalog.Instance.SacrificeCountNeededByItemId.TryGetValue(Main.HoverItem.type, out int needed) && Main.LocalPlayerCreativeTracker.ItemSacrifices.GetSacrificeCount(Main.HoverItem.type) >= needed) {
+							canPick = true;
+						} else if (ModLoader.TryGetMod("HEROsMod", out Mod HEROsMod) && HEROsMod.Call("HasPermission", Main.myPlayer, "ItemBrowser") is bool perm && perm) {
 							canPick = true;
 						}
 						//HERO's mod compat here
@@ -700,7 +785,7 @@ namespace DevHelp {
 			throw new InvalidCastException($"{devFlags.PropertyType} is not a valid type, use {nameof(IEnumerable<string>)} or {nameof(String)}[]");
 		}
 		public static IEnumerable<string> GetFlags(this Mod mod) {
-			if (mod.GetType().GetProperty("DevFlags", BindingFlags.Public | BindingFlags.Static) is PropertyInfo devFlags) {
+			if (mod.GetType().GetProperty("DevFlags", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static) is PropertyInfo devFlags) {
 				try {
 					return ReadFlags(devFlags);
 				} catch (InvalidCastException e) {

@@ -6,5 +6,8 @@
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
   <ItemGroup>
+	  <Reference Include="PegasusLib">
+		  <HintPath>..\ModAssemblies\PegasusLib_v1.0.6.dll</HintPath>
+	  </Reference>
   </ItemGroup>
 </Project>

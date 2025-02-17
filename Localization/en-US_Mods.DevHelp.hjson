@@ -1,13 +1,17 @@
 Warnings: {
 	UnsyncedContentLoading: Content will cause ID desynchronization
 	DNP: This mod is flagged as DNP
+	SelfReportBroken: This mod says it's broken
 }
+
+UseBiomeSelector: Use Biome Selector
 
 Keybinds: {
 	"Toggle Advanced Tooltips.DisplayName": Toggle Advanced Tooltips
 	"Toggle Recipe Maker GUI.DisplayName": Toggle Recipe Maker GUI
 	"Save Rarity Name Image.DisplayName": Save Rarity Name Image
 	"Pick Item.DisplayName": Pick Item
+	"Toggle Biome Selector GUI.DisplayName": Toggle Biome Selector GUI
 }
 
 Configs: {
@@ -29,6 +33,11 @@ Configs: {
 				Currently detected issues:
 				Content which checks if a non-synchronized mod is present in IsLoadingEnabled (causes ID desynchronization in multiplayer)
 				'''
+		}
+
+		showNamesInBestiary: {
+			Label: show Names In Bestiary
+			Tooltip: ""
 		}
 	}
 }
