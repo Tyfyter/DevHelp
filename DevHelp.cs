@@ -50,6 +50,7 @@ namespace DevHelp {
 		public static ModKeybind AdvancedTooltipsHotkey { get; private set; }
 		public static ModKeybind RecipeMakerHotkey { get; private set; }
 		public static ModKeybind BiomeSelectorHotkey { get; private set; }
+		public static ModKeybind GoreAssistant { get; private set; }
 		public static ModKeybind RarityImageHotkey { get; private set; }
 		public static ModKeybind PickItemHotkey { get; private set; }
 
@@ -60,6 +61,7 @@ namespace DevHelp {
 		internal static UserInterface UI;
 		internal static RecipeMakerUI recipeMakerUI;
 		internal static BiomeSelectorUI biomeSelectorUI;
+		internal static GoreAssistantUI goreAssistantUI;
 		internal static int customRecipeIndex;
 		public static Recipe RecipeMakerRecipe => Main.recipe[customRecipeIndex];
 		internal static Action RegenerateRequiredItemQuickLookup;
@@ -82,6 +84,7 @@ namespace DevHelp {
 			AdvancedTooltipsHotkey = KeybindLoader.RegisterKeybind(this, "Toggle Advanced Tooltips", Keys.L);
 			RecipeMakerHotkey = KeybindLoader.RegisterKeybind(this, "Toggle Recipe Maker GUI", Keys.PageDown);
 			BiomeSelectorHotkey = KeybindLoader.RegisterKeybind(this, "Toggle Biome Selector GUI", Keys.PageUp);
+			GoreAssistant = KeybindLoader.RegisterKeybind(this, "Toggle Gore Assistant GUI", Keys.PageUp);
 			RarityImageHotkey = KeybindLoader.RegisterKeybind(this, "Save Rarity Name Image", Keys.PrintScreen);
 			PickItemHotkey = KeybindLoader.RegisterKeybind(this, "Pick Item", "mouse3");
 			DynamicMethodDefinition test = new(typeof(Recipe).GetMethod("CreateRequiredItemQuickLookups", BindingFlags.NonPublic | BindingFlags.Static));
@@ -323,8 +326,8 @@ namespace DevHelp {
 		public override void ModifyInterfaceLayers(List<GameInterfaceLayer> layers) {
 			int inventoryIndex = layers.FindIndex(layer => layer.Name.Equals("Vanilla: Inventory"));
 			if (inventoryIndex != -1) {
-				layers.Insert(inventoryIndex + 1, new LegacyGameInterfaceLayer(
-					"DevHelp: RecipeMakerUI",
+				layers.Insert(inventoryIndex + 4, new LegacyGameInterfaceLayer(
+					"DevHelp: GUIs",
 					delegate {
 						// If the current UIState of the UserInterface is null, nothing will draw. We don't need to track a separate .visible value.
 						DevHelp.UI.Draw(Main.spriteBatch, Main._drawInterfaceGameTime);
@@ -384,6 +387,17 @@ namespace DevHelp {
 				} else {
 					DevHelp.UI.SetState(DevHelp.biomeSelectorUI = null);
 				}
+				tick = true;
+			}
+			if (DevHelp.GoreAssistant.JustPressed) {
+				IngameFancyUI.OpenUIState(new GoreAssistantUI());
+				/*if (DevHelp.goreAssistantUI is null) {
+					DevHelp.goreAssistantUI = new();
+					DevHelp.goreAssistantUI.Activate();
+					DevHelp.UI.SetState(DevHelp.goreAssistantUI);
+				} else {
+					DevHelp.UI.SetState(DevHelp.goreAssistantUI = null);
+				}*/
 				tick = true;
 			}
 

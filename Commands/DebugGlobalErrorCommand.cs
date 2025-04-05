@@ -89,6 +89,14 @@ namespace DevHelp.Commands {
 					}
 					break;
 				}
+				case "PLAYER": {
+					if (args.Length > 1) hook = args[1];
+					foreach (ModPlayer global in player.Player.ModPlayers) {
+						if (hook is not null && global.GetType().GetMethod(hook, BindingFlags.Instance | BindingFlags.DeclaredOnly | BindingFlags.Public | BindingFlags.NonPublic) is null) continue;
+						player.Reply(global.FullName);
+					}
+					break;
+				}
 			}
 		}
 	}
