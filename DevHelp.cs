@@ -53,6 +53,7 @@ namespace DevHelp {
 		public static ModKeybind GoreAssistant { get; private set; }
 		public static ModKeybind RarityImageHotkey { get; private set; }
 		public static ModKeybind PickItemHotkey { get; private set; }
+		public static ModKeybind ExtraAccessorySlotsHotkey { get; private set; }
 
 		public static bool readtooltips = false;
 
@@ -87,6 +88,9 @@ namespace DevHelp {
 			GoreAssistant = KeybindLoader.RegisterKeybind(this, "Toggle Gore Assistant GUI", Keys.PageUp);
 			RarityImageHotkey = KeybindLoader.RegisterKeybind(this, "Save Rarity Name Image", Keys.PrintScreen);
 			PickItemHotkey = KeybindLoader.RegisterKeybind(this, "Pick Item", "mouse3");
+			ExtraAccessorySlotsHotkey = KeybindLoader.RegisterKeybind(this, "ControlAccessorySlots", Keys.PageUp);
+			for (int i = 0; i < 10; i++) AddContent(new ExtraAccessorySlot(i));
+
 			DynamicMethodDefinition test = new(typeof(Recipe).GetMethod("CreateRequiredItemQuickLookups", BindingFlags.NonPublic | BindingFlags.Static));
 			bool startPoint = false;
 			bool firstLdLoc = false;
@@ -584,7 +588,6 @@ namespace DevHelp {
 						} else if (ModLoader.TryGetMod("HEROsMod", out Mod HEROsMod) && HEROsMod.Call("HasPermission", Main.myPlayer, "ItemBrowser") is bool perm && perm) {
 							canPick = true;
 						}
-						//HERO's mod compat here
 					}
 					if (canPick) {
 						Main.mouseItem.SetDefaults(Main.HoverItem.type);
@@ -597,6 +600,19 @@ namespace DevHelp {
 				SoundEngine.PlaySound(SoundID.MenuTick);
 			}
 		}
+		public override void SetControls() {
+			if (DevHelp.ExtraAccessorySlotsHotkey.Current && Math.Abs(PlayerInput.ScrollWheelDelta) >= 60) {
+				extraAccessorySlots += PlayerInput.ScrollWheelDelta / 120;
+				if (extraAccessorySlots < 0) extraAccessorySlots = 0;
+				PlayerInput.ScrollWheelDelta = 0;
+			}
+		}
+		public int extraAccessorySlots = 0;
+	}
+	[Autoload(false)]
+	public class ExtraAccessorySlot(int num) : ModAccessorySlot {
+		public override string Name => base.Name + num;
+		public override bool IsEnabled() => Player.TryGetModPlayer(out DevPlayer devPlayer) && devPlayer.extraAccessorySlots > num;
 	}
 	internal static class AutoRelease {
 		private static readonly HttpClient httpClient = new();
