@@ -493,7 +493,7 @@ namespace DevHelp.UI {
 				Gore.NewGore(
 					NPC.GetSource_Death(),
 					NPC.Center + new Vector2({rect.X + rect.Width / 2} * NPC.direction, {rect.Y + rect.Height / 2}).RotatedBy(NPC.rotation),
-					Vector2.Zero,
+					NPC.velocity,
 					Mod.GetGoreSlot("{gores[i].path}")
 				);
 """					);
