@@ -24,15 +24,6 @@ using ReLogic.OS;
 
 namespace DevHelp.UI {
 	public class GoreAssistantUI : UIState {
-		public const string spawn_gore_template =
-"""
-				Gore.NewGore(
-					NPC.GetSource_Death(),
-					NPC.Center + new Vector2({1}, {2}).RotatedBy(NPC.rotation),
-					Vector2.Zero,
-					mod.GetGoreSlot({0})
-				);
-""";
 		public override void OnInitialize() {
 			OverrideSamplerState = SamplerState.PointClamp;
 			//List<Mod> mods = [];
@@ -258,6 +249,7 @@ namespace DevHelp.UI {
 						if (elements[i].portrait.Parent == this) {
 							if (Lang.GetNPCNameValue(elements[i].npc).Contains(Search, StringComparison.CurrentCultureIgnoreCase)) {
 								elements[i].portrait.Top.Pixels -= heightOffset;
+								elements[i].portrait.Recalculate();
 							} else {
 								heightOffset += elements[i].portrait.Height.Pixels + 2;
 								RemoveChild(elements[i].portrait);
@@ -502,7 +494,7 @@ namespace DevHelp.UI {
 					NPC.GetSource_Death(),
 					NPC.Center + new Vector2({rect.X + rect.Width / 2} * NPC.direction, {rect.Y + rect.Height / 2}).RotatedBy(NPC.rotation),
 					Vector2.Zero,
-					mod.GetGoreSlot("{gores[i].path}")
+					Mod.GetGoreSlot("{gores[i].path}")
 				);
 """					);
 				}
