@@ -41,5 +41,10 @@ Configs: {
 			Label: show Names In Bestiary
 			Tooltip: ""
 		}
+
+		hideNoConfigModsInConfigs: {
+			Label: hide No Config Mods In Configs
+			Tooltip: ""
+		}
 	}
 }

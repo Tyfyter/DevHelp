@@ -23,20 +23,24 @@ using static Terraria.GameContent.Bestiary.BestiaryDatabaseNPCsPopulator.CommonT
 
 namespace DevHelp.UI {
 	public class BiomeSelectorUI : UIState {
+		static Dictionary<string, Action<Player>> biomeSetters = [];
 		public override void OnInitialize() {
 			int row = 0, col = 0;
 			Action<Player> CreateBiomeSetter(string propertyName) {
-				PropertyInfo property = typeof(Player).GetProperty(propertyName);
-				string methodName = property.ReflectedType.FullName + ".set_" + property.Name;
-				DynamicMethod setterMethod = new(methodName, null, [typeof(Player)], true);
-				ILGenerator gen = setterMethod.GetILGenerator();
+				if (!biomeSetters.TryGetValue(propertyName, out Action<Player> setter)) {
+					PropertyInfo property = typeof(Player).GetProperty(propertyName);
+					string methodName = property.ReflectedType.FullName + ".set_" + property.Name;
+					DynamicMethod setterMethod = new(methodName, null, [typeof(Player)], true);
+					ILGenerator gen = setterMethod.GetILGenerator();
 
-				gen.Emit(OpCodes.Ldarg_0);
-				gen.Emit(OpCodes.Ldc_I4_1);
-				gen.Emit(OpCodes.Call, property.SetMethod);
-				gen.Emit(OpCodes.Ret);
+					gen.Emit(OpCodes.Ldarg_0);
+					gen.Emit(OpCodes.Ldc_I4_1);
+					gen.Emit(OpCodes.Call, property.SetMethod);
+					gen.Emit(OpCodes.Ret);
 
-				return (Action<Player>)setterMethod.CreateDelegate(typeof(Action<Player>));
+					biomeSetters[propertyName] = setter = (Action<Player>)setterMethod.CreateDelegate(typeof(Action<Player>));
+				}
+				return setter;
 			}
 			Asset<Texture2D> iconTexture = ModContent.Request<Texture2D>("Terraria/Images/UI/Bestiary/Icon_Tags_Shadow");
 			(string propertyName, SpawnConditionBestiaryInfoElement info)[] vanillaBiomes = [

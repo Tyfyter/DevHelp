@@ -1,6 +1,6 @@
 author = Tyfyter (Tyfyter2002 on steam)
 
-version = 0.1.8
+version = 0.1.8.3
 displayName = Dev Helper
 
 side = NoSync

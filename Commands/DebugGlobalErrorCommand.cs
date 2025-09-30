@@ -21,6 +21,10 @@ namespace DevHelp.Commands {
 			int type;
 			string hook = null;
 			if (args.Length > 2) hook = args[2];
+			static object GetHookListCaseInsensitive(Type type, string hook) {
+				hook = "Hook" + hook;
+				return type.GetFields(BindingFlags.NonPublic | BindingFlags.Static).FirstOrDefault(f => f.Name.Equals(hook, StringComparison.InvariantCultureIgnoreCase))?.GetValue(null);
+			}
 			switch (args[0].ToUpperInvariant()) {
 				case "NPC": {
 					if (!int.TryParse(args[1], out type)) {
@@ -37,7 +41,7 @@ namespace DevHelp.Commands {
 							player.Reply(global.FullName);
 						}
 					} else {
-						GlobalHookList<GlobalNPC> hooks = (GlobalHookList<GlobalNPC>)typeof(NPCLoader).GetField("Hook" + hook, BindingFlags.NonPublic | BindingFlags.Static).GetValue(null);
+						GlobalHookList<GlobalNPC> hooks = (GlobalHookList<GlobalNPC>)GetHookListCaseInsensitive(typeof(NPCLoader), hook);
 						foreach (GlobalNPC global in hooks.Enumerate(npc)) {
 							player.Reply(global.FullName);
 						}
@@ -58,7 +62,7 @@ namespace DevHelp.Commands {
 							player.Reply(global.FullName);
 						}
 					} else {
-						GlobalHookList<GlobalItem> hooks = (GlobalHookList<GlobalItem>)typeof(ItemLoader).GetField("Hook" + hook, BindingFlags.NonPublic | BindingFlags.Static).GetValue(null);
+						GlobalHookList<GlobalItem> hooks = (GlobalHookList<GlobalItem>)GetHookListCaseInsensitive(typeof(ItemLoader), "Hook" + hook);
 						foreach (GlobalItem global in hooks.Enumerate(item)) {
 							player.Reply(global.FullName);
 						}
@@ -82,7 +86,7 @@ namespace DevHelp.Commands {
 							player.Reply(global.FullName);
 						}
 					} else {
-						GlobalHookList<GlobalProjectile> hooks = (GlobalHookList<GlobalProjectile>)typeof(ProjectileLoader).GetField("Hook" + hook, BindingFlags.NonPublic | BindingFlags.Static).GetValue(null);
+						GlobalHookList<GlobalProjectile> hooks = (GlobalHookList<GlobalProjectile>)GetHookListCaseInsensitive(typeof(ProjectileLoader), hook);
 						foreach (GlobalProjectile global in hooks.Enumerate(item)) {
 							player.Reply(global.FullName);
 						}

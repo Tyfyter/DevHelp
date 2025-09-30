@@ -87,7 +87,7 @@ namespace DevHelp {
 			BiomeSelectorHotkey = KeybindLoader.RegisterKeybind(this, "Toggle Biome Selector GUI", Keys.PageUp);
 			GoreAssistant = KeybindLoader.RegisterKeybind(this, "Toggle Gore Assistant GUI", Keys.PageUp);
 			RarityImageHotkey = KeybindLoader.RegisterKeybind(this, "Save Rarity Name Image", Keys.PrintScreen);
-			PickItemHotkey = KeybindLoader.RegisterKeybind(this, "Pick Item", "mouse3");
+			PickItemHotkey = KeybindLoader.RegisterKeybind(this, "Pick Item", "Mouse3");
 			ExtraAccessorySlotsHotkey = KeybindLoader.RegisterKeybind(this, "ControlAccessorySlots", Keys.PageUp);
 			for (int i = 0; i < 10; i++) AddContent(new ExtraAccessorySlot(i));
 
@@ -161,8 +161,29 @@ namespace DevHelp {
 			Type LocalMod = tML.GetType("Terraria.ModLoader.Core.LocalMod");
 			ConstructorInfo ctor = UIModSourceItem.GetConstructor([typeof(string), LocalMod, typeof(CancellationToken)]);
 			MonoModHooks.Modify(ctor, UIModSourceItem_ctor);
+			try {
+				MonoModHooks.Modify(tML.GetType("Terraria.ModLoader.Config.UI.UIModConfigList").GetMethod("PopulateMods", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance), UIModConfigList_PopulateMods);
+			} catch (Exception ex) {
+				Logger.Error("Could not hook UIModSourceItem_ctor", ex);
+			}
 			MonoModHooks.Modify(typeof(BiomeLoader).GetMethod(nameof(BiomeLoader.UpdateBiomes)), IL_BiomeLoader_UpdateBiomes);
 			IL_Player.UpdateBiomes += IL_Player_UpdateBiomes;
+		}
+		private void UIModConfigList_PopulateMods(ILContext il) {
+			ILCursor c = new(il);
+			ILLabel label = default;
+			c.GotoNext(MoveType.After,
+				i => i.MatchBr(out label),
+				i => i.MatchLdloc(out _),
+				i => i.MatchLdfld(out _),
+				i => i.MatchCallOrCallvirt<Mod>("get_" + nameof(Name)),
+				i => i.MatchLdstr("ModLoader")
+			);
+			c.GotoNext(MoveType.After,
+				i => i.MatchBrtrue(out ILLabel newLabel) && newLabel.Target == label.Target
+			);
+			c.EmitDelegate(() => DevHelpConfig.Instance.hideNoConfigModsInConfigs);
+			c.EmitBrtrue(label);
 		}
 
 		private void IL_Player_UpdateBiomes(ILContext il) {
@@ -191,15 +212,11 @@ namespace DevHelp {
 
 		Type UIModSourceItem;
 		delegate bool DisablePublishButton(string modName, UIElement self, UIAutoScaleTextTextPanel<string> buildReloadButton);
-		public class BrokenModWarningTextPanel : UIAutoScaleTextTextPanel<string> {
-			string tooltip;
-			public BrokenModWarningTextPanel(string text, string tooltip, float textScaleMax = 1, bool large = false) : base(text, textScaleMax, large) {
-				this.tooltip = tooltip;
-			}
+		public class BrokenModWarningTextPanel(string text, string tooltip, float textScaleMax = 1, bool large = false) : UIAutoScaleTextTextPanel<string>(text, textScaleMax, large) {
 			protected override void DrawSelf(SpriteBatch spriteBatch) {
 				base.DrawSelf(spriteBatch);
 				if (IsMouseHovering) {
-					UICommon.DrawHoverStringInBounds(spriteBatch, tooltip, Parent.GetOuterDimensions().ToRectangle());
+					UICommon.TooltipMouseText(tooltip);
 				}
 			}
 		}
@@ -312,6 +329,9 @@ namespace DevHelp {
 		public bool showFullBestiary = false;
 		[DefaultValue(true)]
 		public bool showNamesInBestiary = true;
+
+		[DefaultValue(true)]
+		public bool hideNoConfigModsInConfigs = true;
 
 		[DefaultValue(true)]
 		[ReloadRequired]
