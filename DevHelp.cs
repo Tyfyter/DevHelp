@@ -1,48 +1,47 @@
-using Terraria.ModLoader;
-using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Input;
-using Microsoft.Xna.Framework.Graphics;
-using System.Collections.Generic;
-using Terraria;
-using Terraria.Graphics.Effects;
-using Terraria.Graphics.Shaders;
-using Terraria.ID;
-using Terraria.GameInput;
-using Terraria.UI;
-using Terraria.DataStructures;
-using Terraria.GameContent.UI;
+using DevHelp.Commands;
 using DevHelp.UI;
-using ReLogic.Content;
-using Terraria.Audio;
-using System.Reflection;
-using System.Threading.Tasks;
-using System;
-using Terraria.GameContent;
-using Terraria.UI.Chat;
-using System.IO;
-using System.Diagnostics;
-using System.Reflection.Emit;
-using MonoMod.Utils;
-using MonoMod.Cil;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
+using Mono.Cecil;
 using Mono.Cecil.Cil;
+using MonoMod.Cil;
+using MonoMod.Utils;
+using ReLogic.Content;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Net.Http;
+using System.Reflection;
+using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
+using Terraria;
+using Terraria.Audio;
+using Terraria.GameContent;
+using Terraria.GameContent.Bestiary;
+using Terraria.GameContent.Creative;
+using Terraria.GameContent.UI;
+using Terraria.GameInput;
+using Terraria.ID;
+using Terraria.Localization;
+using Terraria.ModLoader;
+using Terraria.ModLoader.Config;
+using Terraria.ModLoader.Core;
+using Terraria.ModLoader.IO;
+using Terraria.ModLoader.UI;
+using Terraria.Social.Steam;
+using Terraria.UI;
+using Terraria.UI.Chat;
+using static Terraria.ModLoader.LocalizationLoader;
+using static Terraria.ModLoader.Logging;
 using MonoOpCodes = Mono.Cecil.Cil.OpCodes;
 using OpCodes = System.Reflection.Emit.OpCodes;
-using Mono.Cecil;
-using System.Text;
-using Terraria.GameContent.Bestiary;
-using Terraria.ModLoader.Config;
-using System.ComponentModel;
-using System.Linq;
-using DevHelp.Commands;
-using Terraria.ModLoader.UI;
-using Terraria.Localization;
-using Terraria.Social.Steam;
-using Terraria.ModLoader.Core;
-using System.Net.Http;
-using System.Threading;
-using System.Net.Http.Json;
-using Terraria.GameContent.Creative;
-using Microsoft.Build.Tasks;
 
 namespace DevHelp {
 	public class DevHelp : Mod {
@@ -50,6 +49,7 @@ namespace DevHelp {
 		public static ModKeybind AdvancedTooltipsHotkey { get; private set; }
 		public static ModKeybind RecipeMakerHotkey { get; private set; }
 		public static ModKeybind BiomeSelectorHotkey { get; private set; }
+		public static ModKeybind BuffSelectorHotkey { get; private set; }
 		public static ModKeybind GoreAssistant { get; private set; }
 		public static ModKeybind RarityImageHotkey { get; private set; }
 		public static ModKeybind PickItemHotkey { get; private set; }
@@ -62,12 +62,24 @@ namespace DevHelp {
 		internal static UserInterface UI;
 		internal static RecipeMakerUI recipeMakerUI;
 		internal static BiomeSelectorUI biomeSelectorUI;
+		internal static BuffSelectorUI buffSelectorUI;
 		internal static GoreAssistantUI goreAssistantUI;
 		internal static int customRecipeIndex;
 		public static Recipe RecipeMakerRecipe => Main.recipe[customRecipeIndex];
 		internal static Action RegenerateRequiredItemQuickLookup;
 		internal static List<Action<Player>> forcedVanillaBiomes = [];
 		public static HashSet<ModBiome> forcedModBiomes = [];
+		public DevHelp() {
+			MonoModHooks.Modify(typeof(ModLoader).GetMethods(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static).First(m => m.Name.Contains("DisableModAndDependents")), il => {
+				ILCursor c = new(il);
+				ILLabel label = c.MarkLabel();
+				c.Index = 0;
+				c.MoveBeforeLabels();
+				c.EmitDelegate(() => DevHelpConfig.Instance?.dontDisableModsOnError ?? true);
+				c.EmitBrfalse(label);
+				c.EmitRet();
+			});
+		}
 		public override void Load() {
 			instance = this;
 			if (Main.netMode != NetmodeID.Server) {
@@ -85,6 +97,7 @@ namespace DevHelp {
 			AdvancedTooltipsHotkey = KeybindLoader.RegisterKeybind(this, "Toggle Advanced Tooltips", Keys.L);
 			RecipeMakerHotkey = KeybindLoader.RegisterKeybind(this, "Toggle Recipe Maker GUI", Keys.PageDown);
 			BiomeSelectorHotkey = KeybindLoader.RegisterKeybind(this, "Toggle Biome Selector GUI", Keys.PageUp);
+			BuffSelectorHotkey = KeybindLoader.RegisterKeybind(this, "Toggle Buff Selector GUI", Keys.PageUp);
 			GoreAssistant = KeybindLoader.RegisterKeybind(this, "Toggle Gore Assistant GUI", Keys.PageUp);
 			RarityImageHotkey = KeybindLoader.RegisterKeybind(this, "Save Rarity Name Image", Keys.PrintScreen);
 			PickItemHotkey = KeybindLoader.RegisterKeybind(this, "Pick Item", "Mouse3");
@@ -336,6 +349,12 @@ namespace DevHelp {
 		[DefaultValue(true)]
 		[ReloadRequired]
 		public bool disableBrokenModUploading = true;
+
+		[DefaultValue(false)]
+		public bool dontDisableModsOnError = false;
+
+		[DefaultValue(false)]
+		public bool dontUpdateOtherLanguagesTranslations = false;
 	}
 	public class DevSystem : ModSystem {
 		public override void AddRecipes() {
@@ -380,6 +399,13 @@ namespace DevHelp {
 				return false;
 			}
 		}
+		public bool HasBuffControlPermission {
+			get {
+				if (Main.netMode == NetmodeID.SinglePlayer) return true;
+				if (!ModLoader.TryGetMod("HEROsMod", out Mod HEROsMod)) return false;
+				return (bool)HEROsMod.Call("HasPermission", Player.whoAmI, "CanUseBuffs");
+			}
+		}
 		public override void ProcessTriggers(TriggersSet triggersSet) {
 			bool tick = false;
 
@@ -410,6 +436,16 @@ namespace DevHelp {
 					DevHelp.UI.SetState(DevHelp.biomeSelectorUI);
 				} else {
 					DevHelp.UI.SetState(DevHelp.biomeSelectorUI = null);
+				}
+				tick = true;
+			}
+			if (DevHelp.BuffSelectorHotkey.JustPressed && HasBuffControlPermission) {
+				if (DevHelp.buffSelectorUI is null) {
+					DevHelp.buffSelectorUI = new BuffSelectorUI();
+					DevHelp.buffSelectorUI.Activate();
+					DevHelp.UI.SetState(DevHelp.buffSelectorUI);
+				} else {
+					DevHelp.UI.SetState(DevHelp.buffSelectorUI = null);
 				}
 				tick = true;
 			}
@@ -610,7 +646,9 @@ namespace DevHelp {
 						}
 					}
 					if (canPick) {
-						Main.mouseItem.SetDefaults(Main.HoverItem.type);
+						if (Main.keyState.PressingControl()) ItemIO.Load(Main.mouseItem, ItemIO.Save(Main.HoverItem));
+						else Main.mouseItem.SetDefaults(Main.HoverItem.type);
+
 						if (Main.keyState.PressingShift()) Main.mouseItem.stack = Main.mouseItem.maxStack;
 					}
 				}

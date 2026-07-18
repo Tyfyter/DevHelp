@@ -83,6 +83,7 @@ namespace DevHelp.Commands
 				player.Reply("Did not find any duplicate recipes");
 			}
 		}
+#pragma warning disable CommonCollisionName // Common type collision name
 		internal struct Recipe {
 			internal Item output;
 			internal HashSet<Item> ingredients;
@@ -92,5 +93,6 @@ namespace DevHelp.Commands
 			}
 			public override int GetHashCode() => output.GetHashCode();
 		}
+#pragma warning restore CommonCollisionName // Common type collision name
 	}
 }

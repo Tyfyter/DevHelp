@@ -2,6 +2,11 @@ Warnings: {
 	UnsyncedContentLoading: Content will cause ID desynchronization
 	DNP: This mod is flagged as DNP
 	SelfReportBroken: This mod says it's broken
+	BannedMod:
+		'''
+		{0} by {1} is banned!
+		This likely means it contains malicious code
+		'''
 }
 
 UseBiomeSelector: Use Biome Selector
@@ -12,8 +17,9 @@ Keybinds: {
 	"Save Rarity Name Image.DisplayName": Save Rarity Name Image
 	"Pick Item.DisplayName": Pick Item
 	"Toggle Biome Selector GUI.DisplayName": Toggle Biome Selector GUI
-	"Toggle Gore Assistant GUI.DisplayName": Toggle  Gore  Assistant  G U I
+	"Toggle Gore Assistant GUI.DisplayName": Toggle Gore Assistant GUI
 	ControlAccessorySlots.DisplayName: Control Accessory Slots
+	"Toggle Buff Selector GUI.DisplayName": Toggle Buff Selector GUI
 }
 
 Configs: {
@@ -38,12 +44,22 @@ Configs: {
 		}
 
 		showNamesInBestiary: {
-			Label: show Names In Bestiary
+			Label: Show Internal Names In Bestiary
 			Tooltip: ""
 		}
 
 		hideNoConfigModsInConfigs: {
-			Label: hide No Config Mods In Configs
+			Label: Hide No Config Mods In Configs
+			Tooltip: ""
+		}
+
+		dontDisableModsOnError: {
+			Label: Don't Disable Mods On Error
+			Tooltip: ""
+		}
+
+		dontUpdateOtherLanguagesTranslations: {
+			Label: dont Update Other Languages Translations
 			Tooltip: ""
 		}
 	}

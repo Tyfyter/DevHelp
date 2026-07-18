@@ -183,7 +183,7 @@ namespace DevHelp.UI {
 				Vector2 size = FontAssets.MouseText.Value.MeasureString(TextDisplay);
 				float scale = Math.Min((dimensions.Width - 60) / (size.X + 1), 1.2f);
 				this.DrawInputContainerText(spriteBatch,
-					dimensions.Position() + new Vector2(30, dimensions.Height * 0.5f - 22 * scale * 0.5f),
+					dimensions.Position() + new Vector2(30, dimensions.Height * 0.5f - 26 * scale * 0.5f),
 					FontAssets.MouseText.Value,
 					Color.White,
 					focused,
