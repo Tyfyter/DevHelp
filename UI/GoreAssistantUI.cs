@@ -1,26 +1,22 @@
-using System.Collections.Generic;
-using Terraria.ModLoader;
-using Terraria.UI;
-using System.Linq;
-using Terraria;
-using Terraria.GameContent.Bestiary;
-using Microsoft.Xna.Framework.Graphics;
-using Terraria.ModLoader.UI;
 using Microsoft.Xna.Framework;
-using Terraria.UI.Chat;
-using Terraria.GameContent;
+using Microsoft.Xna.Framework.Graphics;
 using PegasusLib;
-using System.Text;
-using System;
-using Microsoft.Xna.Framework.Input;
-using static Mono.CompilerServices.SymbolWriter.CodeBlockEntry;
-using static System.Net.Mime.MediaTypeNames;
-using Terraria.GameInput;
-using Terraria.GameContent.UI.Elements;
-using ReLogic.Content;
-using Terraria.ID;
 using PegasusLib.Graphics;
+using ReLogic.Content;
 using ReLogic.OS;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Terraria;
+using Terraria.GameContent;
+using Terraria.GameContent.Bestiary;
+using Terraria.GameContent.UI.Elements;
+using Terraria.ID;
+using Terraria.ModLoader;
+using Terraria.ModLoader.UI;
+using Terraria.UI;
+using Terraria.UI.Chat;
 
 namespace DevHelp.UI {
 	public class GoreAssistantUI : UIState {
@@ -435,6 +431,7 @@ namespace DevHelp.UI {
 		public void SelectNPC(int npc) {
 			selectedNPC = new();
 			selectedNPC.SetDefaults(npc);
+			if (NPCID.Sets.NPCBestiaryDrawOffset.TryGetValue(npc, out NPCID.Sets.NPCBestiaryDrawModifiers modifiers) && modifiers.Frame.HasValue) selectedNPC.frame.Y = selectedNPC.frame.Height * modifiers.Frame.Value;
 			selectedNPC.IsABestiaryIconDummy = true;
 		}
 		public void SelectGore(Gore_Selection_Element gore) {
