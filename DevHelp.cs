@@ -6,6 +6,7 @@ using Microsoft.Xna.Framework.Input;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
+using MonoMod.RuntimeDetour;
 using MonoMod.Utils;
 using ReLogic.Content;
 using System;
@@ -69,16 +70,25 @@ namespace DevHelp {
 		internal static Action RegenerateRequiredItemQuickLookup;
 		internal static List<Action<Player>> forcedVanillaBiomes = [];
 		public static HashSet<ModBiome> forcedModBiomes = [];
+		static ILHook stopDisablingMyMods;
 		public DevHelp() {
-			MonoModHooks.Modify(typeof(ModLoader).GetMethods(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static).First(m => m.Name.Contains("DisableModAndDependents")), il => {
-				ILCursor c = new(il);
-				ILLabel label = c.MarkLabel();
-				c.Index = 0;
-				c.MoveBeforeLabels();
-				c.EmitDelegate(() => DevHelpConfig.Instance?.dontDisableModsOnError ?? true);
-				c.EmitBrfalse(label);
-				c.EmitRet();
-			});
+			try {
+				stopDisablingMyMods = new(typeof(ModLoader).GetMethods(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static).First(m => m.ReturnType == typeof(HashSet<string>) && m.Name.Contains("CollectEnabledDependents")), il => {
+					ILCursor c = new(il);
+					ILLabel label = c.MarkLabel();
+					c.Index = 0;
+					c.GotoNext(MoveType.Before, i => i.MatchRet());
+					c.EmitDelegate(static (HashSet<string> retVal) => {
+						if (DevHelpConfig.Instance?.dontDisableModsOnError ?? true) retVal.Clear();
+						return retVal;
+					});
+				});
+				MonoModHooks.Add(typeof(BossBarLoader).GetMethod("GotoSavedStyle", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static), (Action orig) => {
+					orig();
+					stopDisablingMyMods.Undo();
+					stopDisablingMyMods = null;
+				});
+			} catch (Exception) { }
 		}
 		public override void Load() {
 			instance = this;
